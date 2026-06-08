@@ -1,0 +1,98 @@
+.header {
+    position: fixed;   /* Esto lo saca del flujo y lo deja pegado arriba */
+    top: 0;
+    left: 0;
+    width: 100%;       /* Ocupa todo el ancho */
+    height: 120px;      /* Altura fija */
+    background-color: #ba0031;
+    z-index: 1;     /* detras de sidebar */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    box-sizing: border-box;
+}
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.header-logo {
+    width: 220px;
+    height: auto;
+}
+
+.header-title {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 1.8rem;
+    color: #ffffff;
+    margin: 0;
+}
+
+/* Acciones de la derecha */
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.header-icon-btn, .user-icon-btn {
+    background: none;
+    border: none;
+    font-size: 1.4rem;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    transition: background 0.3s;
+}
+
+.header-icon-btn:hover, .user-icon-btn:hover {
+    background-color: #f0f0f0;
+}
+
+/* Contenedor del Dropdown */
+.user-menu-container {
+    position: relative; /* Clave para el posicionamiento del menú */
+}
+
+.dropdown-menu {
+    position: absolute;
+    right: 0;
+    top: 100px; /* Ajusta según la altura de tu header */
+    background-color: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    min-width: 160px;
+    z-index: 1000;
+    overflow: hidden;
+    animation: fadeIn 0.2s ease-out;
+}
+
+.logout-item {
+    width: 100%;
+    padding: 12px 16px;
+    text-align: left;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #d32f2f;
+    font-weight: 500;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: background 0.2s;
+}
+
+.logout-item:hover {
+    background-color: #fff5f5;
+}
+
+/* Animación simple */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
