@@ -13,9 +13,9 @@ function Navbar({ active, toggleMenu }) {
             <nav className={`navbar ${active ? 'open' : 'closed'}`}>
                 <ul className="nav-links">
                     <li><a href="/">Inicio</a></li>
-                    <li><a href="/catalogo">Catalogo</a></li>
-                    <li><a href="/captura">Captura</a></li>
-                    <li><a href="/reportes">Reportes</a></li>
+                    <li><a href="/departamento">Departamentos</a></li>
+                    <li><a href="/usuarios">Usuarios</a></li>
+                    <li><a href="/cpresupuesto">Captura Presupuestos</a></li>
                     <li><a href="/generar">Generar</a></li>
                     <li><a href="/convenios">Convenios</a></li>
                     <li><a href="/becas">Becas</a></li>

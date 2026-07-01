@@ -29,7 +29,7 @@ return (
                 <a href="https://lasallelaguna.mx/" className="header-logo-link">
                     <img src={Logo} alt="Logo" className="header-logo" />
                 </a>
-                <h1 className="header-title">Sistema de Caja</h1>
+                <h1 className="header-title">PRESUPUESTOS ULSA</h1>
             </div>
             
             <div className="header-actions">

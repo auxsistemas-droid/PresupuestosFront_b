@@ -18,7 +18,7 @@ export const AuthProvider = ({children}) => {
     //funcion para loguear al usuario
     const login = async (email, password) => {
         try {
-            const res = await api.post("/auth/login", {Email: email, PasswordHash: password});
+            const res = await api.post("/auth/login", {Email: email, Password: password});
             return {success: true,message:res.data.message};
         } catch (error) {
             return {success: false, message: error.response?.data?.message || "Login failed"};

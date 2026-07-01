@@ -24,7 +24,7 @@
   transition: all 0.3s ease;
 
   /* --- CAMBIA EL PADDING ASÍ --- */
-  padding: 135px 22px 22px 22px;  
+  padding: 75px 22px 22px 22px;  
 
   /* Asegúrate de que el alto sea el de la pantalla */
   height: 100vh; 

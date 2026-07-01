@@ -3,19 +3,15 @@ import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import '../styles/Login.css';
+import api from "../api/axios";
 
-// Configuración de API (Si no tienes un archivo aparte)
-const api = axios.create({
-    baseURL: 'https://http://localhost:3000/api', 
-    withCredentials: true 
-});
 
 function Login() {
     const { login } = useAuth();
     const navigate = useNavigate();
     const [mensaje, setMensaje] = useState("");
     const [esperando, setEsperando] = useState(false);
-    const [form, setForm] = useState({ Email: "", PasswordHash: "" });
+    const [form, setForm] = useState({ Email: "", Password: "" });
 
     // LÓGICA DE POLLING
     useEffect(() => {
@@ -44,11 +40,10 @@ function Login() {
         e.preventDefault();
         setMensaje("Verificando...");
         
-        const result = await login(form.Email, form.PasswordHash);
+        const result = await login(form.Email, form.Password);
         
         if (result.success) {
-            setMensaje("¡Credenciales correctas! Revisa tu correo para confirmar el acceso.");
-            setEsperando(true);
+             navigate("/dashboard");
         } else {
             setMensaje(result.message || "Error al iniciar sesión");
             setEsperando(false);
@@ -85,7 +80,7 @@ function Login() {
                             className="input"
                             placeholder="••••••••"
                             disabled={esperando}
-                            onChange={e => setForm({ ...form, PasswordHash: e.target.value })} 
+                            onChange={e => setForm({ ...form, Password: e.target.value })} 
                             required
                         />
                     </div>

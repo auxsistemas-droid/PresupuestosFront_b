@@ -1,10 +1,7 @@
-import HeaderN from "../layout/HeaderN";
-import Navbar from "./../layout/Navbar";
 import './../styles/Dashboard.css';
 import React, { useState } from 'react';
 
 function Dashboard() {
-   // Este estado que controlará todo
     const [isSidebarActive, setIsSidebarActive] = useState(true);
 
     const toggleSidebar = () => {
@@ -12,13 +9,6 @@ function Dashboard() {
     };
     return (
         <>
-         <HeaderN />
-        <div className={`layout ${isSidebarActive ? 'sidebar-open' : 'sidebar-closed'}`}>
-
-        <aside className="sidebar">
-                <Navbar active={isSidebarActive} toggleMenu={toggleSidebar} />
-            </aside>
-
         <main className="main-content">
             
             <div className="dashboard">
@@ -39,7 +29,6 @@ function Dashboard() {
             <div className="card span-4 card-md">Atajos</div>
             </div>
         </main>
-    </div>
 </>
     );
 }
