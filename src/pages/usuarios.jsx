@@ -86,62 +86,58 @@ function UsuariosTabla() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-    {datos.length > 0 ? (
-        datos.map((usuario, index) => (
-            <TableRow key={index}>
-                {/* ID del usuario (Limpiado para apuntar directo a tu backend) */}
-                <TableCell className="font-medium">
-                    {usuario.Id_usuario}
-                </TableCell>
+                        {datos.length > 0 ? (
+                            datos.map((usuario, index) => (
+                        <TableRow key={index}>
+                        <TableCell className="font-medium">
+                            {usuario.Id_usuario}
+                        </TableCell>
                 
-                {/* Nombre y Apellidos (Usando tus mayúsculas exactas) */}
-                <TableCell>
-                    {`${usuario.Nombre || ''} ${usuario.APaterno || ''} ${usuario.AMaterno || ''}`.trim() || 'Sin Nombre'}
-                </TableCell>
+                        <TableCell>
+                            {`${usuario.Nombre || ''} ${usuario.APaterno || ''} ${usuario.AMaterno || ''}`.trim() || 'Sin Nombre'}
+                        </TableCell>
                 
-                {/* Correo Electrónico */}
-                <TableCell>
-                    {usuario.Correo}
-                </TableCell>
+                        <TableCell>
+                            {usuario.Correo}
+                        </TableCell>
                 
-                {/* Mapeo dinámico para múltiples roles en formato de Badges */}
-                <TableCell>
-                    <div className="flex flex-wrap gap-1 max-w-[220px]">
-                        {usuario.usuarioRoles && usuario.usuarioRoles.length > 0 ? (
-                            usuario.usuarioRoles.map((userRol, rolIndex) => (
-                                <span 
-                                    key={rolIndex} 
-                                    className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-800 dark:bg-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700"
-                                >
-                                    {userRol.rol?.Nombre || 'Sin Nombre'}
+                        <TableCell>
+                            <div className="flex flex-wrap gap-1 max-w-[220px]">
+                                {usuario.usuarioRoles && usuario.usuarioRoles.length > 0 ? (
+                                    usuario.usuarioRoles.map((userRol, rolIndex) => (
+                                        <span 
+                                            key={rolIndex} 
+                                            className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-800 dark:bg-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700"
+                                        >
+                                            {userRol.rol?.Nombre || 'Sin Nombre'}
+                                        </span>
+                                    ))
+                                ) : (
+                                    <span className="text-muted-foreground text-sm italic">Sin rol</span>
+                                )}
+                            </div>
+                        </TableCell>
+                
+                        {/* Estado Activo / Inactivo */}
+                            <TableCell className="text-right">
+                                <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                                usuario.Activo
+                                    ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" 
+                                    : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
+                                }`}>
+                                    {usuario.Activo ? "Activo" : "Inactivo"}
                                 </span>
-                            ))
-                        ) : (
-                            <span className="text-muted-foreground text-sm italic">Sin rol</span>
-                        )}
-                    </div>
-                </TableCell>
-                
-                {/* Estado Activo / Inactivo */}
-                <TableCell className="text-right">
-                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                        usuario.Activo
-                            ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" 
-                            : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
-                    }`}>
-                        {usuario.Activo ? "Activo" : "Inactivo"}
-                    </span>
-                </TableCell>
-            </TableRow>
-        ))
-    ) : (
-        <TableRow>
-            <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">
-                No se encontraron usuarios registrados.
-            </TableCell>
-        </TableRow>
-    )}
-</TableBody>
+                            </TableCell>
+                        </TableRow>
+                    ))
+                    ) : (
+                    <TableRow>
+                        <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">
+                        No se encontraron usuarios registrados.
+                        </TableCell>
+                    </TableRow>
+                    )}
+                    </TableBody>
                 </Table>
             </div>
         </div>

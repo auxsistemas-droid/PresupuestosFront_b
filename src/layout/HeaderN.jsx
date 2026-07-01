@@ -3,6 +3,7 @@ import axios from 'axios';
 import Logo from './../assets/logos/Logoulsa.png'; // Asegúrate de que la ruta sea correcta
 import {useNavigate} from 'react-router-dom';
 import '../styles/HeaderN.css';
+import { motion } from "framer-motion";
 
 function HeaderN() {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -29,7 +30,13 @@ return (
                 <a href="https://lasallelaguna.mx/" className="header-logo-link">
                     <img src={Logo} alt="Logo" className="header-logo" />
                 </a>
+                <motion.div
+                initial={{ opacity: 0}}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 1 }}
+                >
                 <h1 className="header-title">PRESUPUESTOS ULSA</h1>
+                </motion.div>
             </div>
             
             <div className="header-actions">
