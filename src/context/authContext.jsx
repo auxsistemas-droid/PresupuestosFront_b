@@ -17,13 +17,16 @@ export const AuthProvider = ({children}) => {
 
     //funcion para loguear al usuario
     const login = async (email, password) => {
-        try {
-            const res = await api.post("/auth/login", {Email: email, Password: password});
-            return {success: true,message:res.data.message};
-        } catch (error) {
-            return {success: false, message: error.response?.data?.message || "Login failed"};
-        }
+    try {
+        const res = await api.post("/auth/login", { Email: email, Password: password });
+        // Refrescar el usuario inmediatamente después del login
+        const meRes = await api.get("/auth/me");
+        setUser(meRes.data);
+        return { success: true, message: res.data.message };
+    } catch (error) {
+        return { success: false, message: error.response?.data?.message || "Login failed" };
     }
+};
     //funcion para desloguear al usuario
     const logout = async () => {
         try {

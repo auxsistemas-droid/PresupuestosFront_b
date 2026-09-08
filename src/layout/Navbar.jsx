@@ -16,12 +16,10 @@ function Navbar({ active, toggleMenu }) {
                     <li><a href="/departamento">Departamentos</a></li>
                     <li><a href="/usuarios">Usuarios</a></li>
                     <li><a href="/cpresupuesto">Captura Presupuestos</a></li>
-                    <li><a href="/generar">Generar</a></li>
-                    <li><a href="/convenios">Convenios</a></li>
-                    <li><a href="/becas">Becas</a></li>
-                    <li><a href="/clientes">Clientes</a></li>
-                    <li><a href="/articulos">Articulos</a></li>
-                    <li><a href="/servicios">Servicios</a></li>
+                    <li><a href="/categorias">Categorías</a></li>
+                    <li><a href="/periodos">Periodos</a></li>
+                    <li><a href="/autorizados">Autorizados</a></li>
+                    <li><a href="/comprobantes">Comprobantes</a></li>
                     <li><a href="/configuracion">Configuracion</a></li>
                 </ul>
             </nav>

@@ -21,13 +21,10 @@ function presupuestosTable(){
         const [modalEliminarAbierto, setModalEliminarAbierto] = useState(false);
         const [idAEliminar, setIdAEliminar] = useState(null);
 
+        // --- ESTADO PARA CREAR ---
         const [formData, setFormData] = useState({
-            Id_Presupuesto: '',
-            Id_Departamento: '',
             Id_Periodo: '',
-            Monto_Aprobado: '',
-            Monto_Ejercido: '',
-            Estado: ''
+            detalles: [{ id_categoria: '', monto_asignado: '', descripcion: '' }]
         });
 
         useEffect(() => {
@@ -58,7 +55,6 @@ function presupuestosTable(){
             setCargando(false);
         });
 }, []);
-
         const handleAbrirModal = (presupuesto) => {
             setPresupuestoSeleccionado(presupuesto);
             setModalAbierto(true);
@@ -186,7 +182,6 @@ const handleEliminar = async () => {
                             <TableHead>Monto ejercido</TableHead>
                             <TableHead className="w-[120px]">Estado</TableHead>
                             <TableHead className="text-right pr-1 w-[120px]">Acciones</TableHead>
-
                         </TableRow>
                     </TableHeader>
                     <TableBody>
