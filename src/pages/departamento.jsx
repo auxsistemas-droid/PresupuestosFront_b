@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import Swal from 'sweetalert2';
 import api from "../api/axios";
 
 function DepartamentoTabla() {
@@ -36,6 +37,10 @@ function DepartamentoTabla() {
   const [coordinadorId, setCoordinadorId] = useState("");
 
   const coordinadorSeleccionado = usuariosDisponibles.find((u) => u.Id_usuario === coordinadorId);
+
+  //estado para crear departamento
+  const [modalCrearAbierto, setModalCrearAbierto] = useState(false);
+  const [modalEditarAbierto, setModalEditarAbierto] = useState(false);
 
   useEffect(() => {
     api.get('/departamento')
@@ -105,6 +110,35 @@ useEffect(() => {
   });
 }, []);
 
+  const handleAbrirModalDepartamento = () => {
+  setFormNombre("");
+  setCoordinadorId("");
+  setErrorGuardar(null);
+  setModalCrearAbierto(true);
+};
+
+  const handleCrearDepartamento = () => {
+  setGuardando(true);
+  setErrorGuardar(null);
+
+  api.post('/departamento', { Nombre: formNombre })
+    .then((res) => {
+      setDatos((prevDatos) => [...prevDatos, res.data]);
+      setModalCrearAbierto(false); // Cierra el modal tras crear
+      Swal.fire({
+        title: "Departamento creado",
+        icon: "success",
+        draggable: true,
+      });
+    })
+    .catch(() => {
+      setErrorGuardar("No se pudo crear el departamento. Intenta nuevamente.");
+    })
+    .finally(() => {
+      setGuardando(false);
+    });
+};
+
   const handleAbrirModal = (departamento) => {
     setDepartamentoSeleccionado(departamento);
     setFormNombre(departamento.Nombre || departamento.nombre || "");
@@ -115,6 +149,43 @@ useEffect(() => {
 
   if (cargando) return <p className="p-6 text-center text-muted-foreground">Cargando departamentos...</p>;
   if (error) return <p className="p-6 text-center text-red-500">Error: {error}</p>;
+
+  const handleEliminarDepartamento = (id) => {
+  Swal.fire({
+    title: "¿Estás seguro de eliminar el departamento?",
+    text: "Si lo haces no podrás revertirlo!",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#3085d6",
+    cancelButtonColor: "#d33",
+    confirmButtonText: "Sí, eliminar!"
+  }).then((result) => {
+    if (result.isConfirmed) {
+      api.delete(`/departamento/${id}`)
+        .then(() => {
+          setDatos((prevDatos) => prevDatos.filter((d) => d.Id_departamento !== id));
+          Swal.fire({
+            title: "Eliminado!",
+            text: "Tu departamento ha sido eliminado.",
+            icon: "success"
+          });
+        })
+        .catch(() => {
+          setError("No se pudo eliminar el departamento.");
+          Swal.fire({
+            title: "Error al eliminar departamento",
+            icon: "error",
+          });
+        });
+    }
+  });
+};
+
+  const handleEditarDepartamento = (departamento) => {
+    setDepartamentoSeleccionado(departamento);
+    setFormNombre(departamento.Nombre || departamento.nombre || "");
+    setModalEditarAbierto(true);
+  }
 
   return (
     <>
@@ -133,7 +204,7 @@ useEffect(() => {
         <div className="flex gap-2 items-center">
           <HoverCard>
             <HoverCardTrigger asChild>
-              <button className="flex items-center justify-center rounded-full p-2 shadow-md transition-all duration-200 hover:scale-110 hover:bg-neutral-200 active:scale-95 text-neutral-700 dark:text-neutral-300">
+              <button onClick={handleAbrirModalDepartamento} className="flex items-center justify-center rounded-full p-2 shadow-md transition-all duration-200 hover:scale-110 hover:bg-neutral-200 active:scale-95 text-neutral-700 dark:text-neutral-300">
                 <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="icon icon-tabler icons-tabler-outline icon-tabler-circle-plus">
                   <path stroke="none" d="M0 0h24v24H0z" fill="none" />
                   <path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0" />
@@ -227,7 +298,7 @@ useEffect(() => {
                       className="inline-flex items-center justify-center rounded-full p-2 text-red-500 transition-all duration-200 hover:scale-110 hover:bg-red-50 dark:hover:bg-red-950/30 active:scale-95"
                       onClick={(e) => {
                         e.stopPropagation();
-                        // Acción de eliminar
+                        handleEliminarDepartamento(departamento.Id_departamento);
                       }}
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" className="icon icon-tabler icons-tabler-outline icon-tabler-trash-x">
@@ -323,16 +394,12 @@ useEffect(() => {
               <div className="space-y-1">
                 <h4 className="text-sm font-semibold">Agregar colaborador</h4>
                 <p className="text-xs text-muted-foreground">
-                  Crea un nuevo registro de colaborador asignándole un departamento.
+                  Agrega un nuevo colaborador al departamento.
                 </p>
               </div>
             </HoverCardContent>
           </HoverCard>
-          {departamentoSeleccionado?.usuarios?.length > 0 && (
-            <span className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-0.5 text-xs font-medium ">
-              {departamentoSeleccionado.usuarios.length}
-            </span>
-          )}
+          
         </div>
 
         {departamentoSeleccionado?.usuarios?.length > 0 ? (
@@ -373,6 +440,54 @@ useEffect(() => {
       <Button type="button" onClick={handleGuardarCambios} disabled={guardando}>
   {guardando ? "Guardando..." : "Guardar Cambios"}
 </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+
+    {/* ================= PANTALLA EMERGENTE (MODAL) CREAR DEPARTAMENTO ================= */}
+    {/* Modal de Creación */}
+<Dialog open={modalCrearAbierto} onOpenChange={setModalCrearAbierto}>
+  <DialogContent className="sm:max-w-[500px] bg-white dark:bg-slate-900">
+    <DialogHeader>
+      <DialogTitle>Crear Nuevo Departamento</DialogTitle>
+      <DialogDescription>
+        Ingresa el nombre del nuevo departamento.
+      </DialogDescription>
+    </DialogHeader>
+
+    <div className="grid gap-2 py-1">
+      {errorGuardar && (
+        <p className="text-sm text-red-500 font-medium">{errorGuardar}</p>
+      )}
+
+      <div className="grid gap-2">
+        <label htmlFor="nombreCrear" className="text-sm font-medium">
+          Nombre del Departamento
+        </label>
+        <Input
+          id="nombreCrear"
+          value={formNombre}
+          onChange={(e) => setFormNombre(e.target.value.toUpperCase())}
+          placeholder="Ej. Recursos Humanos"
+        />
+      </div>
+    </div>
+
+    <DialogFooter>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => setModalCrearAbierto(false)}
+      >
+        Cancelar
+      </Button>
+      <Button
+        type="button"
+        onClick={handleCrearDepartamento}
+        disabled={guardando}
+      >
+        {guardando ? "Creando..." : "Guardar"}
+      </Button>
     </DialogFooter>
   </DialogContent>
 </Dialog>

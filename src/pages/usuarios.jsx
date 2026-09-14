@@ -3,6 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
+import api from "../api/axios";
 
 function UsuariosTabla() {
     const [datos, setDatos] = useState([]);
@@ -10,38 +11,28 @@ function UsuariosTabla() {
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        // Actualizado al endpoint de usuarios
-        fetch('http://localhost:3000/api/users', {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            credentials: 'include' 
-        })
-        .then((res) => {
-            if (!res.ok) {
-                if (res.status === 401) throw new Error("Sesión expirada. Por favor, inicia sesión de nuevo.");
-                throw new Error("Error al obtener los usuarios");
-            }
-            return res.json();
-        })
-        .then((data) => {
-            // Validamos la estructura de la respuesta de la misma forma
-            if (Array.isArray(data)) {
-                setDatos(data);
-                console.log(data);
-            } else if (data.data && Array.isArray(data.data)) {
-                setDatos(data.data);
-            } else {
-                setDatos([]);
-            }
-            setCargando(false);
-        })
-        .catch((err) => {
-            setError(err.message);
-            setCargando(false);
-        });
-    }, []);
+  api.get('/users')
+    .then((res) => {
+      const data = res.data;
+      if (Array.isArray(data)) {
+        setDatos(data);
+      } else if (data.data && Array.isArray(data.data)) {
+        setDatos(data.data);
+      } else {
+        setDatos([]);
+      }
+    })
+    .catch((err) => {
+      if (err.response?.status === 401) {
+        setError("Sesión expirada. Por favor, inicia sesión de nuevo.");
+      } else {
+        setError("Error al obtener los usuarios");
+      }
+    })
+    .finally(() => {
+      setCargando(false);
+    });
+}, []);
 
     if (cargando) return <p className="p-6 text-center text-muted-foreground">Cargando usuarios...</p>;
     if (error) return <p className="p-6 text-center text-red-500">Error: {error}</p>;
