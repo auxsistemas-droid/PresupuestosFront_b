@@ -1,26 +1,28 @@
 import React from 'react';
+import { Link } from 'react-router-dom'; // Importamos Link
 import '../styles/Navbar.css';
-import logo from './../assets/logos/Logoulsa.png'; // Asegúrate de que la ruta sea correcta
+import logo from './../assets/logos/Logoulsa.png';
+
 function Navbar({ active, toggleMenu }) {
     return (
         <>
-        <div className="space">
-            <img src={logo} alt="Logo" className="header-logo" />
-        </div>
-        <button className="menu-toggle" onClick={toggleMenu}>
-            {active ? '✕' : '☰'}
-        </button>
+            <div className="space">
+                <img src={logo} alt="Logo" className="header-logo" />
+            </div>
+            <button className="menu-toggle" onClick={toggleMenu}>
+                {active ? '✕' : '☰'}
+            </button>
             <nav className={`navbar ${active ? 'open' : 'closed'}`}>
                 <ul className="nav-links">
-                    <li><a href="/">Inicio</a></li>
-                    <li><a href="/departamento">Departamentos</a></li>
-                    <li><a href="/usuarios">Usuarios</a></li>
-                    <li><a href="/cpresupuesto">Captura Presupuestos</a></li>
-                    <li><a href="/categorias">Categorías</a></li>
-                    <li><a href="/periodos">Periodos</a></li>
-                    <li><a href="/autorizados">Autorizados</a></li>
-                    <li><a href="/comprobantes">Comprobantes</a></li>
-                    <li><a href="/configuracion">Configuracion</a></li>
+                    <li><Link to="/dashboard">Inicio</Link></li>
+                    <li><Link to="/departamento">Departamentos</Link></li>
+                    <li><Link to="/usuarios">Usuarios</Link></li>
+                    <li><Link to="/cpresupuesto">Captura Presupuestos</Link></li>
+                    <li><Link to="/categorias">Categorías</Link></li>
+                    <li><Link to="/periodos">Periodos</Link></li>
+                    <li><Link to="/autorizados">Autorizados</Link></li>
+                    <li><Link to="/comprobantes">Comprobantes</Link></li>
+                    <li><Link to="/configuracion">Configuracion</Link></li>
                 </ul>
             </nav>
         </>
