@@ -1,8 +1,14 @@
-import React, { useState, useEffect } from "react";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
+import React, { useState, useEffect, useMemo } from "react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import {
   Dialog,
   DialogContent,
@@ -18,481 +24,542 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import Swal from 'sweetalert2';
+import { Badge } from "@/components/ui/badge";
+import {
+  Search,
+  Plus,
+  Pencil,
+  Trash2,
+  UserPlus,
+  X,
+  Users,
+  Loader2,
+  Building2,
+} from "lucide-react";
+import Swal from "sweetalert2";
 import api from "../api/axios";
 
-function DepartamentoTabla() {
+export default function DepartamentoTabla() {
   const [datos, setDatos] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
 
+  // Estados del Buscador
+  const [busqueda, setBusqueda] = useState("");
+
+  // Estados de Formulario y Modal Único
   const [modalAbierto, setModalAbierto] = useState(false);
+  const [modoModal, setModoModal] = useState("crear"); // "crear" | "editar"
   const [departamentoSeleccionado, setDepartamentoSeleccionado] = useState(null);
 
   const [formNombre, setFormNombre] = useState("");
+  const [coordinadorId, setCoordinadorId] = useState("");
+  const [colaboradoresSeleccionados, setColaboradoresSeleccionados] = useState([]);
+  const [nuevoColaboradorId, setNuevoColaboradorId] = useState("");
+
   const [guardando, setGuardando] = useState(false);
   const [errorGuardar, setErrorGuardar] = useState(null);
 
   const [usuariosDisponibles, setUsuariosDisponibles] = useState([]);
-  const [coordinadorId, setCoordinadorId] = useState("");
 
-  const coordinadorSeleccionado = usuariosDisponibles.find((u) => u.Id_usuario === coordinadorId);
-
-  //estado para crear departamento
-  const [modalCrearAbierto, setModalCrearAbierto] = useState(false);
-  const [modalEditarAbierto, setModalEditarAbierto] = useState(false);
-
+  // Cargar datos al montar
   useEffect(() => {
-    api.get('/departamento')
-      .then((res) => {
-        const data = res.data;
-
-        if (Array.isArray(data)) {
-          setDatos(data);
-        } else if (data.data && Array.isArray(data.data)) {
-          setDatos(data.data);
-        } else {
-          setDatos([]);
-        }
-      })
-      .catch((err) => {
-        if (err.response && err.response.status === 401) {
-          setError("Sesión expirada. Por favor, inicia sesión nuevamente.");
-        } else {
-          setError("Error al cargar los departamentos. Por favor, intenta nuevamente.");
-        }
-      })
-      .finally(() => {
-        setCargando(false);
-      });
+    fetchDepartamentos();
+    fetchUsuarios();
   }, []);
 
-const handleGuardarCambios = () => {
-  setGuardando(true);
-  setErrorGuardar(null);
+  const fetchDepartamentos = () => {
+    setCargando(true);
+    api
+      .get("/departamento")
+      .then((res) => {
+        const data = res.data;
+        if (Array.isArray(data)) setDatos(data);
+        else if (data.data && Array.isArray(data.data)) setDatos(data.data);
+        else setDatos([]);
+      })
+      .catch((err) => {
+        if (err.response?.status === 401) {
+          setError("Sesión expirada. Por favor, inicia sesión nuevamente.");
+        } else {
+          setError("Error al cargar los departamentos.");
+        }
+      })
+      .finally(() => setCargando(false));
+  };
 
-  const id = departamentoSeleccionado.Id_departamento;
+  const fetchUsuarios = () => {
+    api
+      .get("/users")
+      .then((res) => {
+        const data = res.data;
+        setUsuariosDisponibles(Array.isArray(data) ? data : data.data || []);
+      })
+      .catch(() => setUsuariosDisponibles([]));
+  };
 
-  Promise.all([
-    api.put(`/departamento/${id}`, { Nombre: formNombre }),
-    api.patch(`/departamento/${id}/coordinador`, { idCoordinador: coordinadorId }),
-  ])
-    .then(() => {
-      setDatos((prevDatos) =>
-        prevDatos.map((d) =>
-          d.Id_departamento === id
-            ? {
-                ...d,
-                Nombre: formNombre,
-                coordinador: usuariosDisponibles.find((u) => u.Id_usuario === coordinadorId) || null,
-              }
-            : d
-        )
-      );
-      setModalAbierto(false);
-    })
-    .catch(() => {
-      setErrorGuardar("No se pudo guardar el cambio. Intenta nuevamente.");
-    })
-    .finally(() => {
-      setGuardando(false);
-    });
-};
-
-useEffect(() => {
-  api.get('/users')
-  .then((res) => {
-    const data = res.data;
-    setUsuariosDisponibles(Array.isArray(data)? data : data.data || []);
-  })
-  .catch(() => {
-    setUsuariosDisponibles([]);
-  });
-}, []);
-
-  const handleAbrirModalDepartamento = () => {
-  setFormNombre("");
-  setCoordinadorId("");
-  setErrorGuardar(null);
-  setModalCrearAbierto(true);
-};
-
-  const handleCrearDepartamento = () => {
-  setGuardando(true);
-  setErrorGuardar(null);
-
-  api.post('/departamento', { Nombre: formNombre })
-    .then((res) => {
-      setDatos((prevDatos) => [...prevDatos, res.data]);
-      setModalCrearAbierto(false); // Cierra el modal tras crear
-      Swal.fire({
-        title: "Departamento creado",
-        icon: "success",
-        draggable: true,
-      });
-    })
-    .catch(() => {
-      setErrorGuardar("No se pudo crear el departamento. Intenta nuevamente.");
-    })
-    .finally(() => {
-      setGuardando(false);
-    });
-};
-
-  const handleAbrirModal = (departamento) => {
-    setDepartamentoSeleccionado(departamento);
-    setFormNombre(departamento.Nombre || departamento.nombre || "");
-    setCoordinadorId(departamento.coordinador?.Id_usuario ? String(departamentoSeleccionado.coordinado.Id_usuario) : "");
+  // Abrir Modal para Crear
+  const handleAbrirCrear = () => {
+    setModoModal("crear");
+    setDepartamentoSeleccionado(null);
+    setFormNombre("");
+    setCoordinadorId("");
+    setColaboradoresSeleccionados([]);
     setErrorGuardar(null);
     setModalAbierto(true);
   };
 
-  if (cargando) return <p className="p-6 text-center text-muted-foreground">Cargando departamentos...</p>;
-  if (error) return <p className="p-6 text-center text-red-500">Error: {error}</p>;
-
-  const handleEliminarDepartamento = (id) => {
-  Swal.fire({
-    title: "¿Estás seguro de eliminar el departamento?",
-    text: "Si lo haces no podrás revertirlo!",
-    icon: "warning",
-    showCancelButton: true,
-    confirmButtonColor: "#3085d6",
-    cancelButtonColor: "#d33",
-    confirmButtonText: "Sí, eliminar!"
-  }).then((result) => {
-    if (result.isConfirmed) {
-      api.delete(`/departamento/${id}`)
-        .then(() => {
-          setDatos((prevDatos) => prevDatos.filter((d) => d.Id_departamento !== id));
-          Swal.fire({
-            title: "Eliminado!",
-            text: "Tu departamento ha sido eliminado.",
-            icon: "success"
-          });
-        })
-        .catch(() => {
-          setError("No se pudo eliminar el departamento.");
-          Swal.fire({
-            title: "Error al eliminar departamento",
-            icon: "error",
-          });
-        });
-    }
-  });
-};
-
-  const handleEditarDepartamento = (departamento) => {
+  // Abrir Modal para Editar / Ver Detalles
+  const handleAbrirEditar = (departamento) => {
+    setModoModal("editar");
     setDepartamentoSeleccionado(departamento);
     setFormNombre(departamento.Nombre || departamento.nombre || "");
-    setModalEditarAbierto(true);
+    
+    // Asignación segura de ID de coordinador
+    const coordId = departamento.coordinador?.Id_usuario || departamento.coordinador?.id || "";
+    setCoordinadorId(coordId ? String(coordId) : "");
+    
+    // Asignación inicial de colaboradores existentes
+    setColaboradoresSeleccionados(departamento.usuarios || []);
+    setErrorGuardar(null);
+    setModalAbierto(true);
+  };
+
+  // Agregar Colaborador en el Modal
+  const handleAgregarColaborador = () => {
+    if (!nuevoColaboradorId) return;
+    const usuario = usuariosDisponibles.find(
+      (u) => String(u.Id_usuario || u.id) === String(nuevoColaboradorId)
+    );
+
+    const userId = usuario?.Id_usuario || usuario?.id;
+
+    if (usuario && !colaboradoresSeleccionados.some((c) => (c.Id_usuario || c.id) === userId)) {
+      setColaboradoresSeleccionados([...colaboradoresSeleccionados, usuario]);
+    }
+    setNuevoColaboradorId("");
+  };
+
+  // Remover Colaborador de la lista temporal
+  const handleRemoverColaborador = (idUsuario) => {
+    setColaboradoresSeleccionados(
+      colaboradoresSeleccionados.filter((u) => (u.Id_usuario || u.id) !== idUsuario)
+    );
+  };
+
+  // Guardar (Crear o Editar)
+  const handleGuardar = async () => {
+  if (!formNombre.trim()) {
+    setErrorGuardar("El nombre del departamento es obligatorio.");
+    return;
+  }
+
+  setGuardando(true);
+  setErrorGuardar(null);
+
+  try {
+    const payloadDept = {
+      Nombre: formNombre,
+      Id_Coordinador: coordinadorId ? Number(coordinadorId) : null, // <-- ajustar nombre real del campo
+    };
+
+    let deptId;
+
+    if (modoModal === "crear") {
+      const res = await api.post("/departamento", payloadDept);
+      deptId = res.data.Id_departamento || res.data.id;
+    } else {
+      deptId = departamentoSeleccionado.Id_departamento || departamentoSeleccionado.id;
+      await api.put(`/departamento/${deptId}`, payloadDept);
+    }
+
+    // --- Sincronizar colaboradores (diff entre lo que había y lo que quedó) ---
+    const idsOriginales = (departamentoSeleccionado?.usuarios || []).map(
+      (u) => String(u.Id_usuario || u.id)
+    );
+    const idsNuevos = colaboradoresSeleccionados.map((u) => String(u.Id_usuario || u.id));
+
+    const agregados = idsNuevos.filter((id) => !idsOriginales.includes(id));
+    const removidos = idsOriginales.filter((id) => !idsNuevos.includes(id));
+
+    const peticionesColaboradores = [
+      ...agregados.map((id) => api.put(`/users/${id}`, { Id_Departamento: deptId })),
+      ...removidos.map((id) => api.put(`/users/${id}`, { Id_Departamento: null })),
+    ];
+
+    // Además, asegurar que el coordinador también quede vinculado al depto (si tu regla de negocio lo requiere)
+    if (coordinadorId && !idsNuevos.includes(String(coordinadorId))) {
+      peticionesColaboradores.push(
+        api.put(`/users/${coordinadorId}`, { Id_Departamento: deptId })
+      );
+    }
+
+    await Promise.all(peticionesColaboradores);
+
+    Swal.fire({
+      title: modoModal === "crear" ? "¡Creado!" : "¡Actualizado!",
+      text: "Los cambios se guardaron correctamente.",
+      icon: "success",
+      timer: 2000,
+      showConfirmButton: false,
+    });
+
+    await Promise.all([fetchDepartamentos(), fetchUsuarios()]);
+    setModalAbierto(false);
+  } catch (err) {
+    setErrorGuardar("Ocurrió un error al guardar los datos. Inténtalo de nuevo.");
+  } finally {
+    setGuardando(false);
+  }
+};
+
+  // Eliminar Departamento
+  const handleEliminarDepartamento = (id) => {
+    Swal.fire({
+      title: "¿Eliminar departamento?",
+      text: "Esta acción no se puede deshacer.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#ef4444",
+      cancelButtonColor: "#64748b",
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        api
+          .delete(`/departamento/${id}`)
+          .then(() => {
+            setDatos((prev) => prev.filter((d) => (d.Id_departamento || d.id) !== id));
+            Swal.fire("Eliminado", "El departamento ha sido removido.", "success");
+          })
+          .catch(() => {
+            Swal.fire("Error", "No se pudo eliminar el departamento.", "error");
+          });
+      }
+    });
+  };
+
+  // Búsqueda en tiempo real (Client side)
+  const datosFiltrados = useMemo(() => {
+    return datos.filter((dep) => {
+      const nombre = (dep.Nombre || dep.nombre || "").toLowerCase();
+      const coordNombre = dep.coordinador
+        ? `${dep.coordinador.Nombre || dep.coordinador.nombre || ""} ${dep.coordinador.APaterno || dep.coordinador.aPaterno || ""}`.toLowerCase()
+        : "";
+      const term = busqueda.toLowerCase();
+      return nombre.includes(term) || coordNombre.includes(term);
+    });
+  }, [datos, busqueda]);
+
+  if (error) {
+    return (
+      <div className="p-12 text-center text-red-500 font-medium">
+        <p>{error}</p>
+        <Button variant="outline" className="mt-4" onClick={fetchDepartamentos}>
+          Reintentar
+        </Button>
+      </div>
+    );
   }
 
   return (
-    <>
-    <div className="p-6 max-w-5xl mx-auto pt-12">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold tracking-tight">Gestión de Departamentos</h2>
+    <div className="p-6 max-w-7xl mx-auto space-y-6">
+      {/* Encabezado Principal */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 flex items-center gap-2">
+            <Building2 className="h-6 w-6 text-primary" />
+            Gestión de Departamentos
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Administra los departamentos, coordinadores y equipos asignados.
+          </p>
+        </div>
+
+        <Button onClick={handleAbrirCrear} className="gap-2 shadow-sm">
+          <Plus className="h-4 w-4" />
+          Nuevo Departamento
+        </Button>
       </div>
 
-      <div className="flex gap-2 justify-between items-center mb-4">
-        <div className="flex gap-1 items-center">
-          <Input type="search" placeholder="Buscar departamento..." className="h-9 w-64" />
-          <Button className="h-9 bg-black text-white rounded-md transition-transform duration-200 hover:scale-105 hover:bg-black/90">
-            Buscar
-          </Button>
-        </div>
-        <div className="flex gap-2 items-center">
-          <HoverCard>
-            <HoverCardTrigger asChild>
-              <button onClick={handleAbrirModalDepartamento} className="flex items-center justify-center rounded-full p-2 shadow-md transition-all duration-200 hover:scale-110 hover:bg-neutral-200 active:scale-95 text-neutral-700 dark:text-neutral-300">
-                <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="icon icon-tabler icons-tabler-outline icon-tabler-circle-plus">
-                  <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                  <path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0" />
-                  <path d="M9 12h6" />
-                  <path d="M12 9v6" />
-                </svg>
-              </button>
-            </HoverCardTrigger>
-
-            <HoverCardContent className="w-64 p-3 bg-white dark:bg-slate-900 border shadow-md rounded-md">
-              <div className="space-y-1">
-                <h4 className="text-sm font-semibold">Agregar Departamento</h4>
-                <p className="text-xs text-muted-foreground">
-                  Crea un nuevo registro de departamento asignándole un coordinador.
-                </p>
-              </div>
-            </HoverCardContent>
-          </HoverCard>
+      {/* Barra de Filtros y Búsqueda */}
+      <div className="flex items-center justify-between gap-4">
+        <div className="relative w-full max-w-sm">
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Buscar por departamento o coordinador..."
+            className="pl-9 h-10"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+          />
         </div>
       </div>
 
-      <div className="rounded-md border bg-card">
+      {/* Tabla Principal */}
+      <div className="rounded-md border bg-card shadow-sm overflow-hidden">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead className="w-[100px]">ID</TableHead>
+            <TableRow className="bg-slate-50 dark:bg-slate-900/50">
               <TableHead>Nombre del Departamento</TableHead>
-              <TableHead>Coordinador</TableHead>
+              <TableHead>Coordinador Responsable</TableHead>
               <TableHead>Colaboradores</TableHead>
               <TableHead>Estado</TableHead>
-              <TableHead className="text-center" colSpan={2}>Acciones</TableHead>
+              <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {datos.length > 0 ? (
-              datos.map((departamento, index) => (
-                <TableRow
-                  key={index}
-                  className="cursor-pointer hover:bg-muted/50 transition-colors"
-                  onClick={() => handleAbrirModal(departamento)}
-                >
-                  <TableCell className="font-medium">
-                    {departamento.Id_departamento || departamento.idDepartamento || departamento.id}
-                  </TableCell>
-                  <TableCell>{departamento.Nombre || departamento.nombre}</TableCell>
+            {cargando ? (
+              <TableRow>
+                <TableCell colSpan={6} className="h-32 text-center">
+                  <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    Cargando departamentos...
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : datosFiltrados.length > 0 ? (
+              datosFiltrados.map((departamento, index) => {
+                const id = departamento.Id_departamento || departamento.id || `dept-${index}`;
+                const activo = departamento.Activo ?? departamento.activo ?? true;
 
-                  <TableCell>
-                    {departamento.coordinador ? (
-                      `${departamento.coordinador.Nombre || departamento.coordinador.nombre} ${departamento.coordinador.APaterno || departamento.coordinador.aPaterno} ${departamento.coordinador.AMaterno || departamento.coordinador.aMaterno}`
-                    ) : (
-                      <span className="text-muted-foreground italic">Sin asignar</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {departamento.usuarios?.length > 0 ? (
-                    <span className="inline-flex items-center rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 px-2.5 py-0.5 text-xs font-medium">
-                    {departamento.usuarios.length} colaborador{departamento.usuarios.length !== 1 ? "es" : ""}
-                  </span>
-                  ) : (
-                    <span className="text-muted-foreground italic">Sin asignar</span>
-                  )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                      departamento.Activo || departamento.activo
-                        ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-                        : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
-                    }`}>
-                      {departamento.Activo || departamento.activo ? "Activo" : "Inactivo"}
-                    </span>
-                  </TableCell>
+                return (
+                  <TableRow
+                    key={id}
+                    className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer"
+                    onClick={() => handleAbrirEditar(departamento)}
+                  >
+                    <TableCell className="font-medium text-slate-900 dark:text-slate-100">
+                      {departamento.Nombre || departamento.nombre}
+                    </TableCell>
 
-                  <TableCell className="text-center">
-                    <button
-                      className="inline-flex items-center justify-center rounded-full p-2 text-muted-foreground transition-all duration-200 hover:scale-110 hover:bg-neutral-200 hover:text-black dark:hover:bg-slate-800 dark:hover:text-white active:scale-95"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        // Acción de editar
-                      }}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="icon icon-tabler icons-tabler-outline icon-tabler-pencil">
-                        <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                        <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
-                        <path d="M13.5 6.5l4 4" />
-                      </svg>
-                    </button>
-                  </TableCell>
+                    <TableCell>
+                      {departamento.coordinador ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">
+                            {departamento.coordinador.Nombre || departamento.coordinador.nombre}{" "}
+                            {departamento.coordinador.APaterno || departamento.coordinador.aPaterno}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground italic">Sin asignar</span>
+                      )}
+                    </TableCell>
 
-                  <TableCell className="text-center">
-                    <button
-                      className="inline-flex items-center justify-center rounded-full p-2 text-red-500 transition-all duration-200 hover:scale-110 hover:bg-red-50 dark:hover:bg-red-950/30 active:scale-95"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEliminarDepartamento(departamento.Id_departamento);
-                      }}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" className="icon icon-tabler icons-tabler-outline icon-tabler-trash-x">
-                        <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                        <path d="M4 7h16" />
-                        <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" />
-                        <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" />
-                        <path d="M10 12l4 4m0 -4l-4 4" />
-                      </svg>
-                    </button>
-                  </TableCell>
-                </TableRow>
-              ))
+                    <TableCell>
+                      {departamento.usuarios?.length > 0 ? (
+                        <Badge variant="secondary" className="gap-1 font-normal">
+                          <Users className="h-3 w-3" />
+                          {departamento.usuarios.length}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground italic">Sin asignar</span>
+                      )}
+                    </TableCell>
+
+                    <TableCell>
+                      <Badge
+                        variant={activo ? "default" : "destructive"}
+                        className={activo ? "bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/20 border-emerald-200 dark:text-emerald-400" : ""}
+                      >
+                        {activo ? "Activo" : "Inactivo"}
+                      </Badge>
+                    </TableCell>
+
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleAbrirEditar(departamento)}
+                          title="Editar departamento"
+                        >
+                          <Pencil className="h-4 w-4 text-muted-foreground hover:text-slate-900" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEliminarDepartamento(id)}
+                          title="Eliminar departamento"
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500 hover:text-red-700" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             ) : (
               <TableRow>
-                <TableCell colSpan={6} className="text-center h-24 text-muted-foreground">
-                  No se encontraron departamentos registrados.
+                <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
+                  No se encontraron resultados para la búsqueda.
                 </TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
       </div>
-    </div>
-    {/* ================= PANTALLA EMERGENTE (MODAL) ================= */}
-<Dialog open={modalAbierto} onOpenChange={setModalAbierto}>
-  <DialogContent className="sm:max-w-[600px] bg-white dark:bg-slate-900">
-    <DialogHeader>
-      <DialogTitle>
-        {departamentoSeleccionado ? "Detalles del Departamento" : "Nuevo Departamento"}
-      </DialogTitle>
-      <DialogDescription>
-        {departamentoSeleccionado
-          ? "Visualiza los detalles del departamento seleccionado y sus colaboradores."
-          : "Ingresa los datos para registrar un nuevo departamento."}
-      </DialogDescription>
-    </DialogHeader>
 
-    {/* Formulario dentro del Modal */}
-    <div className="grid gap-5 py-4">
-      <div className="grid gap-2">
-        <label htmlFor="nombre" className="text-sm font-medium">
-          Nombre del Departamento
-        </label>
-        <Input
-          id="nombre"
-          value={formNombre}
-          onChange={(e) => setFormNombre(e.target.value)}
-          placeholder="Ej. Recursos Humanos"
-        />
-      </div>
+      {/* ================= MODAL UNIFICADO (CREAR / EDITAR) ================= */}
+      <Dialog open={modalAbierto} onOpenChange={setModalAbierto}>
+        <DialogContent className="sm:max-w-[550px] bg-white">
+          <DialogHeader>
+            <DialogTitle>
+              {modoModal === "crear" ? "Crear Nuevo Departamento" : "Editar Departamento"}
+            </DialogTitle>
+            <DialogDescription>
+              {modoModal === "crear"
+                ? "Completa la información para dar de alta un nuevo departamento."
+                : "Modifica los datos del departamento y gestiona a sus integrantes."}
+            </DialogDescription>
+          </DialogHeader>
 
-      <div className="grid gap-2">
-  <label className="text-sm font-medium">Coordinador</label>
-  <label className="text-xs text-muted-foreground"> coordinador actual: {departamentoSeleccionado?.coordinador ? `${departamentoSeleccionado.coordinador.Nombre} ${departamentoSeleccionado.coordinador.APaterno} ${departamentoSeleccionado.coordinador.AMaterno}` : "Sin asignar"}</label>
-<Select
-  value={coordinadorId ? String(coordinadorId) : undefined}
-  onValueChange={(val) => setCoordinadorId(Number(val))}
->
-  <SelectTrigger className="bg-white dark:bg-slate-950">
-    <SelectValue placeholder="Seleccionar coordinador">
-      {coordinadorSeleccionado
-        ? `${coordinadorSeleccionado.Nombre} ${coordinadorSeleccionado.APaterno} ${coordinadorSeleccionado.AMaterno}`
-        : "Seleccionar coordinador"}
-    </SelectValue>
-  </SelectTrigger>
-  <SelectContent className="bg-white dark:bg-slate-950">
-    {usuariosDisponibles.map((u) => (
-      <SelectItem key={u.Id_usuario} value={String(u.Id_usuario)}>
-        {u.Nombre} {u.APaterno} {u.AMaterno}
-      </SelectItem>
-    ))}
-  </SelectContent>
-</Select>
-</div>
-
-      <div className="grid gap-2">
-        <div className="flex items-center justify-between">
-          <label className="text-sm font-medium">Colaboradores</label>
-          <HoverCard>
-            <HoverCardTrigger asChild>
-              <button className="flex items-center justify-center rounded-full p-2 shadow-md transition-all duration-200 hover:scale-110 hover:bg-neutral-200 active:scale-95 text-neutral-700 dark:text-neutral-300">
-                <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="icon icon-tabler icons-tabler-outline icon-tabler-circle-plus">
-                  <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                  <path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0" />
-                  <path d="M9 12h6" />
-                  <path d="M12 9v6" />
-                </svg>
-              </button>
-            </HoverCardTrigger>
-
-            <HoverCardContent className="w-64 p-3 bg-white dark:bg-slate-900 border shadow-md rounded-md">
-              <div className="space-y-1">
-                <h4 className="text-sm font-semibold">Agregar colaborador</h4>
-                <p className="text-xs text-muted-foreground">
-                  Agrega un nuevo colaborador al departamento.
-                </p>
+          <div className="grid gap-4 py-3">
+            {errorGuardar && (
+              <div className="p-3 bg-red-50 text-red-600 rounded-md text-sm">
+                {errorGuardar}
               </div>
-            </HoverCardContent>
-          </HoverCard>
-          
-        </div>
+            )}
 
-        {departamentoSeleccionado?.usuarios?.length > 0 ? (
-<div className="rounded-lg border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 max-h-52 overflow-y-auto bg-white dark:bg-slate-950">            {departamentoSeleccionado.usuarios.map((usuario, i) => {
-              const nombre = usuario.Nombre || usuario.nombre || "";
-              const aPaterno = usuario.APaterno || usuario.aPaterno || "";
-              const iniciales = `${nombre[0] || ""}${aPaterno[0] || ""}`.toUpperCase();
+            {/* Nombre del departamento */}
+            <div className="grid gap-1.5">
+              <label htmlFor="nombre" className="text-sm font-medium">
+                Nombre del Departamento <span className="text-red-500">*</span>
+              </label>
+              <Input
+                id="nombre"
+                value={formNombre}
+                onChange={(e) => setFormNombre(e.target.value)}
+                placeholder="Ej. Recursos Humanos"
+              />
+            </div>
 
-              return (
-                <div
-                  key={i}
-                  className="flex items-center gap-3 px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
-        >
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-xs font-semibold">
-            {iniciales}
+            {/* Selector de Coordinador */}
+            <div className="grid gap-1.5">
+              <label className="text-sm font-medium">Coordinador Asignado</label>
+              <Select
+                value={coordinadorId ? String(coordinadorId) : ""}
+                onValueChange={(val) => setCoordinadorId(val)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar un coordinador" />
+                </SelectTrigger>
+                <SelectContent className="bg-white dark:bg-slate-900 border shadow-md">
+                  {usuariosDisponibles.map((u, idx) => {
+                    const uId = u.Id_usuario || u.id || `user-select-${idx}`;
+                    return (
+                      <SelectItem key={uId} value={String(uId)}>
+                        {u.Nombre || u.nombre} {u.APaterno || u.aPaterno} {u.AMaterno || u.aMaterno || ""}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Asignación de Colaboradores */}
+            <div className="grid gap-2 border-t pt-3 mt-2">
+              <label className="text-sm font-medium">Colaboradores Asignados</label>
+
+              {/* Selector para agregar nuevo colaborador */}
+              <div className="flex gap-2">
+                <Select
+                  value={nuevoColaboradorId}
+                  onValueChange={(val) => setNuevoColaboradorId(val)}
+                >
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Agregar usuario al equipo..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white dark:bg-slate-900 border shadow-md">
+                    {usuariosDisponibles
+                      .filter(
+                        (u) =>
+                          !colaboradoresSeleccionados.some(
+                            (c) => String(c.Id_usuario || c.id) === String(u.Id_usuario || u.id)
+                          )
+                      )
+                      .map((u, idx) => {
+                        const uId = u.Id_usuario || u.id || `colab-select-${idx}`;
+                        return (
+                          <SelectItem key={uId} value={String(uId)}>
+                            {u.Nombre || u.nombre} {u.APaterno || u.aPaterno}
+                          </SelectItem>
+                        );
+                      })}
+                  </SelectContent>
+                </Select>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={handleAgregarColaborador}
+                  disabled={!nuevoColaboradorId}
+                >
+                  <UserPlus className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {/* Lista de Colaboradores Agregados */}
+              <div className="mt-2 max-h-40 overflow-y-auto border rounded-md divide-y bg-slate-50/50 dark:bg-slate-900/50">
+                {colaboradoresSeleccionados.length > 0 ? (
+                  colaboradoresSeleccionados.map((usuario, index) => {
+                    const uId = usuario.Id_usuario || usuario.id || `colab-${index}`;
+                    const nombre = usuario.Nombre || usuario.nombre || "";
+                    const aPaterno = usuario.APaterno || usuario.aPaterno || "";
+
+                    return (
+                      <div
+                        key={uId}
+                        className="flex items-center justify-between p-2 text-sm px-3"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0">
+                            {nombre[0] || "U"}
+                            {aPaterno[0] || ""}
+                          </div>
+                          <span className="truncate">
+                            {nombre} {aPaterno}
+                          </span>
+                        </div>
+
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-muted-foreground hover:text-red-500"
+                          onClick={() => handleRemoverColaborador(uId)}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p className="text-xs text-muted-foreground text-center py-4">
+                    Sin colaboradores asignados a este departamento.
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium truncate">
-                      {nombre} {aPaterno} {usuario.AMaterno || usuario.aMaterno}
-                    </p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {usuario.Correo || usuario.correo}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="rounded-lg border border-dashed border-slate-200 dark:border-slate-800 px-3 py-6 text-center">
-            <p className="text-sm text-muted-foreground">Sin colaboradores asignados</p>
-          </div>
-        )}
-      </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setModalAbierto(false)}
+              disabled={guardando}
+            >
+              Cancelar
+            </Button>
+            <Button type="button" onClick={handleGuardar} disabled={guardando}>
+              {guardando && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {modoModal === "crear" ? "Crear Departamento" : "Guardar Cambios"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
-
-    <DialogFooter>
-      <Button type="button" onClick={handleGuardarCambios} disabled={guardando}>
-  {guardando ? "Guardando..." : "Guardar Cambios"}
-</Button>
-    </DialogFooter>
-  </DialogContent>
-</Dialog>
-
-    {/* ================= PANTALLA EMERGENTE (MODAL) CREAR DEPARTAMENTO ================= */}
-    {/* Modal de Creación */}
-<Dialog open={modalCrearAbierto} onOpenChange={setModalCrearAbierto}>
-  <DialogContent className="sm:max-w-[500px] bg-white dark:bg-slate-900">
-    <DialogHeader>
-      <DialogTitle>Crear Nuevo Departamento</DialogTitle>
-      <DialogDescription>
-        Ingresa el nombre del nuevo departamento.
-      </DialogDescription>
-    </DialogHeader>
-
-    <div className="grid gap-2 py-1">
-      {errorGuardar && (
-        <p className="text-sm text-red-500 font-medium">{errorGuardar}</p>
-      )}
-
-      <div className="grid gap-2">
-        <label htmlFor="nombreCrear" className="text-sm font-medium">
-          Nombre del Departamento
-        </label>
-        <Input
-          id="nombreCrear"
-          value={formNombre}
-          onChange={(e) => setFormNombre(e.target.value.toUpperCase())}
-          placeholder="Ej. Recursos Humanos"
-        />
-      </div>
-    </div>
-
-    <DialogFooter>
-      <Button
-        type="button"
-        variant="outline"
-        onClick={() => setModalCrearAbierto(false)}
-      >
-        Cancelar
-      </Button>
-      <Button
-        type="button"
-        onClick={handleCrearDepartamento}
-        disabled={guardando}
-      >
-        {guardando ? "Creando..." : "Guardar"}
-      </Button>
-    </DialogFooter>
-  </DialogContent>
-</Dialog>
-    </>
   );
 }
-
-export default DepartamentoTabla;
