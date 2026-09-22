@@ -10,7 +10,7 @@ import CPresupuestos from "./pages/presupuestos";
 import './index.css';
 import MainLayout from "./layout/MainLayout";
 import Periodos from "./pages/periodos";
-
+import Categorias from "./pages/categorias";
 
 function App() {
   return (
@@ -32,7 +32,7 @@ function App() {
             <Route path="/usuarios" element={<Usuarios/>}/>
             <Route path="/cpresupuesto" element={<CPresupuestos/>}/>
             <Route path="/periodos" element={<Periodos/>}/>
-
+            <Route path="/categorias" element={<Categorias/>}/>
           </Route>
 
         </Routes>

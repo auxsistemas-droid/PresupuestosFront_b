@@ -1,419 +1,514 @@
 import React, { useState, useEffect } from 'react';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { motion } from "framer-motion";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { motion, AnimatePresence } from "framer-motion";
 import api from '../api/axios.js';
 
-function presupuestosTable(){
-        const [datos, setDatos] = useState([]);
-        const [cargando, setCargando] = useState(true);
-        const [error, setError] = useState(null);
+function PresupuestosManager() {
+    const [presupuestos, setPresupuestos] = useState([]);
+    const [periodos, setPeriodos] = useState([]);
+    const [categorias, setCategorias] = useState([]);
+    const [cargando, setCargando] = useState(true);
 
-        const [modalAbierto, setModalAbierto] = useState(false);
-        const [presupuestoSeleccionado, setPresupuestoSeleccionado] = useState(null);
+    // Modal Crear/Ver Presupuesto
+    const [modalCrearOpen, setModalCrearOpen] = useState(false);
+    const [modalVerOpen, setModalVerOpen] = useState(false);
+    const [presupuestoSeleccionado, setPresupuestoSeleccionado] = useState(null);
 
-        const [modoModal, setModoModal] = useState(null); // "ver" o "editar"
-        const [modalFormAbierto, setModalFormAbierto] = useState(false);
+    // Paso activo del creador (1: Periodo, 2: Partidas)
+    const [paso, setPaso] = useState(1);
 
-        const [modalEliminarAbierto, setModalEliminarAbierto] = useState(false);
-        const [idAEliminar, setIdAEliminar] = useState(null);
+    // Estado local para idPeriodo (almacena el ID como NÚMERO)
+    const [idPeriodo, setIdPeriodo] = useState(null);
+    const [detalles, setDetalles] = useState([]);
 
-        // --- ESTADO PARA CREAR ---
-        const [formData, setFormData] = useState({
-            Id_Periodo: '',
-            detalles: [{ id_categoria: '', monto_asignado: '', descripcion: '' }]
-        });
+    // Campos temporales para la partida actual
+    const [partidaTemporal, setPartidaTemporal] = useState({
+        id_categoria: '',
+        monto_asignado: '',
+        descripcion: ''
+    });
 
-        useEffect(() => {
-    api.get('/presupuesto')
-        .then((res) => {
-            // Con Axios los datos ya vienen parseados en res.data
-            const data = res.data;
+    useEffect(() => {
+        cargarDatosIniciales();
+    }, []);
 
-            if (Array.isArray(data)) {
-                setDatos(data);
-                console.log(data);
-            } else if (data && Array.isArray(data.data)) {
-                setDatos(data.data);
-            } else {
-                setDatos([]);
-            }
-        })
-        .catch((err) => {
-            // Axios captura automáticamente códigos 4xx/5xx como el 401
-            if (err.response && err.response.status === 401) {
-                setError("Sesión expirada. Por favor, inicia sesión de nuevo.");
-            } else {
-                setError(err.message || "Error al obtener los presupuestos");
-            }
-        })
-        .finally(() => {
-            // Cierra el indicador de carga sin importar si dio éxito o error
+    // Helper único y directo para obtener ID numérico del periodo
+    const obtenerIdPeriodo = (p) => {
+    if (!p) return null;
+    const val = p.Id_Periodos ?? p.id_periodo ?? p.Id_Periodo ?? p.id ?? p.Id;
+    if (val === undefined || val === null) return null;
+    const num = Number(val);
+    return Number.isNaN(num) ? null : num;
+    };
+
+    const getNombrePeriodo = (p) => {
+        if (!p) return 'Periodo no especificado';
+        return p.nombre || p.Nombre || p.descripcion || p.Descripcion || `Periodo Fiscal #${obtenerIdPeriodo(p)}`;
+    };
+
+    const obtenerIdCategoria = (c) => {
+        if (!c) return null;
+        const val = c.id_categoria ?? c.Id_Categoria ?? c.id ?? c.Id;
+        return val !== undefined && val !== null ? Number(val) : null;
+    };
+
+    const getNombreCategoria = (id) => {
+        const cat = categorias.find((c) => obtenerIdCategoria(c) === Number(id));
+        return cat ? (cat.Nombre || cat.nombre || `Categoría #${id}`) : `Categoría #${id}`;
+    };
+
+    const cargarDatosIniciales = async () => {
+        setCargando(true);
+        try {
+            const [resPresupuestos, resPeriodos, resCategorias] = await Promise.all([
+                api.get('/presupuesto').catch(() => ({ data: [] })),
+                api.get('/periodos-fiscales').catch(() => api.get('/periodo')).catch(() => ({ data: [] })),
+                api.get('/categoria-gasto').catch(() => ({ data: [] }))
+            ]);
+
+            const listaPresupuestos = Array.isArray(resPresupuestos.data) ? resPresupuestos.data : resPresupuestos.data?.data || [];
+            const listaPeriodos = Array.isArray(resPeriodos.data) ? resPeriodos.data : resPeriodos.data?.data || [];
+            const listaCategorias = Array.isArray(resCategorias.data) ? resCategorias.data : resCategorias.data?.data || [];
+
+            setPresupuestos(listaPresupuestos);
+            setPeriodos(listaPeriodos);
+            setCategorias(listaCategorias);
+        } catch (error) {
+            console.error("Error al cargar datos:", error);
+        } finally {
             setCargando(false);
-        });
-}, []);
-        const handleAbrirModal = (presupuesto) => {
-            setPresupuestoSeleccionado(presupuesto);
-            setModalAbierto(true);
+        }
+    };
+
+    const handleResetForm = () => {
+        const primerPeriodo = periodos.length > 0 ? obtenerIdPeriodo(periodos[0]) : null;
+        setIdPeriodo(primerPeriodo);
+        setDetalles([]);
+        setPartidaTemporal({ id_categoria: '', monto_asignado: '', descripcion: '' });
+        setPaso(1);
+    };
+
+    const handleAbrirCrear = () => {
+        handleResetForm();
+        setModalCrearOpen(true);
+    };
+
+    const handleAgregarPartida = (e) => {
+        e.preventDefault();
+        if (!partidaTemporal.id_categoria || !partidaTemporal.monto_asignado || !partidaTemporal.descripcion) {
+            alert("Completa todos los campos de la partida.");
+            return;
         }
 
-        const handleAbrirCrear = () => {
-            setModoModal("crear");
-            setFormData({
-                Id_Presupuesto: '',
-                Id_Departamento: '',
-                Id_Periodo: '',
-                Monto_Aprobado: '',
-                Monto_Ejercido: '',
-                Estado: ''
-            });
-            setModalFormAbierto(true);
+        const nuevaPartida = {
+            id_categoria: parseInt(partidaTemporal.id_categoria, 10),
+            monto_asignado: parseFloat(partidaTemporal.monto_asignado),
+            descripcion: partidaTemporal.descripcion
+        };
+
+        setDetalles([...detalles, nuevaPartida]);
+        setPartidaTemporal({ id_categoria: '', monto_asignado: '', descripcion: '' });
+    };
+
+    const handleEliminarPartida = (index) => {
+        setDetalles(detalles.filter((_, i) => i !== index));
+    };
+
+    const handleGuardarPresupuesto = async () => {
+        const parsedIdPeriodo = Number(idPeriodo);
+
+        if (!parsedIdPeriodo || isNaN(parsedIdPeriodo) || parsedIdPeriodo <= 0) {
+            alert("Por favor selecciona un periodo fiscal válido.");
+            return;
         }
 
-        const handleAbrirEditar = (presupuesto, e) => {
-            e.stopPropagation(); // Evita que al dar clic se abra también el modal de la fila
-            setModoModal("editar");
-            setPresupuestoSeleccionado(presupuesto);
-            setFormData({
-                Id_Presupuesto: presupuesto.id_Presupuesto,
-                Id_Departamento: presupuesto.Id_Departamento,
-                Id_Periodo: presupuesto.Id_Periodo,
-                Monto_Aprobado: presupuesto.Monto_Aprobado,
-                Monto_Ejercido: presupuesto.Monto_Ejercido,
-                Estado: presupuesto.Estado
-            });
-            setModalFormAbierto(true);
+        if (detalles.length === 0) {
+            alert("Debes agregar al menos una partida antes de guardar.");
+            return;
         }
 
-        const handleGuardar = async (e) => {
-    e.preventDefault();
-    try {
-        if (modoModal === 'crear') {
-            const res = await api.post('/presupuesto', formData);
-            setDatos([...datos, res.data]); // Actualiza la tabla localmente
-        } else if (modoModal === 'editar') {
-            const id = presupuestoSeleccionado.id_Presupuesto;
-            const res = await api.put(`/presupuesto/${id}`, formData);
-            setDatos(datos.map(item => item.id_Presupuesto === id ? res.data : item));
+        const payload = {
+            id_periodo: parsedIdPeriodo,
+            detalles: detalles.map((d) => ({
+                id_categoria: parseInt(d.id_categoria, 10),
+                monto_asignado: parseFloat(d.monto_asignado),
+                descripcion: d.descripcion
+            }))
+        };
+
+        try {
+            await api.post('/presupuesto', payload);
+            setModalCrearOpen(false);
+            cargarDatosIniciales();
+        } catch (error) {
+            alert("Error al guardar presupuesto: " + (error.response?.data?.message || error.message));
         }
-        setModalFormAbierto(false);
-    } catch (err) {
-        alert("Error al guardar: " + (err.response?.data?.message || err.message));
-    }
-};
+    };
 
-// --- MANEJO DE ELIMINAR ---
-const handleConfirmarEliminar = (id, e) => {
-    e.stopPropagation();
-    setIdAEliminar(id);
-    setModalEliminarAbierto(true);
-};
+    const totalCalculado = detalles.reduce((acc, curr) => acc + (curr.monto_asignado || 0), 0);
 
-const handleEliminar = async () => {
-    try {
-        await api.delete(`/presupuesto/${idAEliminar}`);
-        setDatos(datos.filter(item => item.id_Presupuesto !== idAEliminar));
-        setModalEliminarAbierto(false);
-    } catch (err) {
-        alert("Error al eliminar: " + (err.response?.data?.message || err.message));
-    }
-};
-        if (cargando) return <p className="p-6 text-center text-muted-foreground">Cargando usuarios...</p>;
-        if (error) return <p className="p-6 text-center text-red-500">Error: {error}</p>;
+    const formatearMoneda = (monto) => {
+        return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(monto || 0);
+    };
 
-        const formatearMoneda = (monto) => {
-            return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(monto);
-        }
-    
     return (
-        <>
-        <div className="p-6 max-w-7xl mx-auto pt-12">
-            <div className="flex justify-between items-center mb-4">
-                <h1 className="text-2xl font-bold tracking-tighter">Captura de Presupuestos</h1>
+        <div className="p-8 max-w-7xl mx-auto min-h-screen bg-slate-50/50 dark:bg-slate-950">
+            {/* Encabezado Principal */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                <div>
+                    <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+                        Gestión de Presupuestos
+                    </h1>
+                    <p className="text-slate-500 text-sm mt-1">
+                        Planeación, distribución y control presupuestal por periodo fiscal.
+                    </p>
+                </div>
+
+                <Button 
+                    onClick={handleAbrirCrear}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-lg shadow-emerald-600/20 rounded-xl px-5 py-6 flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>
+                    Nuevo Presupuesto
+                </Button>
             </div>
-            <div className="flex gap-2 justify-between items-center mb-6">
-                {/** Buscador */}
-                <div className="flex gap-1 items-center">
-                    <Input type="search" placeholder="Buscar usuario..." className="h-9 w-64" />
-                    <Button className="h-9 bg-black text-white rounded-md transition-all duration-200 hover:scale-105 hover:bg-black/90">
-                        Buscar
+
+            {/* Listado Principal */}
+            {cargando ? (
+                <div className="text-center py-20 text-slate-400">Cargando datos...</div>
+            ) : presupuestos.length === 0 ? (
+                <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-300 dark:border-slate-800">
+                    <p className="text-slate-500 font-medium">No hay presupuestos cargados aún.</p>
+                    <Button variant="link" onClick={handleAbrirCrear} className="text-emerald-600 mt-2">
+                        + Crear el primero
                     </Button>
                 </div>
-                {/** Acciones */}
-                <div className="flex gap-2">
-                    <HoverCard>
-                {/* El disparador: Al pasar el mouse sobre lo que esté aquí dentro, se activará la tarjeta */}
-                <HoverCardTrigger asChild>
-                    <button className="flex items-center justify-center rounded-full p-2 shadow-md transition-all duration-200 hover:scale-110 hover:bg-neutral-200 active:scale-95 text-neutral-700 dark:text-neutral-300" onClick={handleAbrirCrear}>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="icon icon-tabler icons-tabler-outline icon-tabler-circle-plus">
-                            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                            <path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0" />
-                            <path d="M9 12h6" />
-                            <path d="M12 9v6" />
-                        </svg>
-                    </button>
-                </HoverCardTrigger>
-
-                {/* El contenido: Lo que se muestra al hacer Hover */}
-                <HoverCardContent className="w-64 p-3 bg-white dark:bg-slate-900 border shadow-md rounded-md">
-                    <div className="space-y-1">
-                        <h4 className="text-sm font-semibold">Agregar Presupuesto</h4>
-                        <p className="text-xs text-muted-foreground">
-                        Crea un nuevo registro de presupuesto asignándole un departamento, periodo y un monto base.
-                        </p>
-                    </div>
-                </HoverCardContent>
-                </HoverCard>             
-                </div>
-            </div>
-            {/** Tabla de Presupuestos */}
-            <div className="w-full overflow-x-auto rounded-md border bg-card">
-                <Table className="min-w-[1100px] w-full" >
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead className="w-[80px]">ID</TableHead>
-                            <TableHead>Departamento</TableHead>
-                            <TableHead>Periodo</TableHead>
-                            <TableHead>Coordinador</TableHead>
-                            <TableHead>Monto Aprobado</TableHead>
-                            <TableHead>Monto ejercido</TableHead>
-                            <TableHead className="w-[120px]">Estado</TableHead>
-                            <TableHead className="text-right pr-1 w-[120px]">Acciones</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {datos.length > 0 ? (
-                            datos.map((presupuesto, index) => (
-                        <TableRow key={index}
-                        className="cursor-pointer hover:bg-muted/50 transition-colors"
-                        onClick={() => handleAbrirModal(presupuesto)}
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {presupuestos.map((item, idx) => (
+                        <motion.div 
+                            key={idx}
+                            whileHover={{ y: -4 }}
+                            className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between"
+                            onClick={() => { setPresupuestoSeleccionado(item); setModalVerOpen(true); }}
                         >
-                        <TableCell className="font-medium">
-                            {presupuesto.id_Presupuesto}
-                        </TableCell>
-                
-                        <TableCell>
-                            {presupuesto.departamento?.Nombre || 'Sin Departamento'}
-                        </TableCell>
-                
-                        <TableCell>
-                            {presupuesto.periodo?.Nombre || 'Sin Periodo'}
-                        </TableCell>
-                
-                        <TableCell>
-                            {presupuesto.departamento?.coordinador ? (`${presupuesto.departamento.coordinador.Nombre} ${presupuesto.departamento.coordinador.APaterno} ${presupuesto.departamento.coordinador.AMaterno}`
-                            ) : (
-                            `ID: ${presupuesto.departamento?.Id_Coordinador || 'Sin asignar'}`
-                            )}
-                        </TableCell>
-                        
-                        {/* Monto Aprobado */}
-                        <TableCell>
-                            {formatearMoneda(presupuesto.Monto_Aprobado)}
-                        </TableCell>
-                        
-                        {/* Monto Ejercido */}
-                        <TableCell>
-                            {formatearMoneda(presupuesto.Monto_Ejercido)}
-                        </TableCell>
-                
-                        {/* Estado */}
-                        <TableCell>
-                            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                                presupuesto.Estado === 'aprobado'
-                                    ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" 
-                                    : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
-                            }`}>
-                                {presupuesto.Estado.toUpperCase()}
-                            </span>
-                        </TableCell>
-                        <TableCell className="text-center">
-                            <button onClick={(e) => handleAbrirEditar(presupuesto, e)} className="inline-flex items-center justify-center rounded-full p-2 text-muted-foreground transition-all duration-200 hover:scale-110 hover:bg-neutral-200 hover:text-black dark:hover:bg-slate-800 dark:hover:text-white active:scale-95" 
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="icon icon-tabler icons-tabler-outline icon-tabler-pencil">
-                                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                                <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
-                                <path d="M13.5 6.5l4 4" />
-                                </svg>
-                                </button>
-                        </TableCell>
-                        <TableCell className="text-center">
-                            <button onClick={(e) => handleConfirmarEliminar(presupuesto.id_Presupuesto, e)} className="inline-flex items-center justify-center rounded-full p-2 text-red-500 transition-all duration-200 hover:scale-110 hover:bg-red-50 dark:hover:bg-red-950/30 active:scale-95"
-                            >
+                            <div>
+                                <div className="flex justify-between items-start mb-4">
+                                    <span className="text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                                        Periodo #{item.id_periodo || item.Id_Periodo || item.Id_Periodos}
+                                    </span>
+                                    <span className="text-xs text-slate-400">
+                                        {item.detalles?.length || 0} partidas
+                                    </span>
+                                </div>
+                                <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100 mb-1">
+                                    {item.periodo?.Nombre || item.periodo?.nombre || `Presupuesto Fiscal`}
+                                </h3>
+                                <p className="text-3xl font-black text-slate-900 dark:text-white mt-4">
+                                    {formatearMoneda(
+                                        item.detalles?.reduce((a, b) => a + Number(b.monto_asignado || b.Monto_Asignado || 0), 0) || item.Monto_Aprobado
+                                    )}
+                                </p>
+                            </div>
 
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="icon icon-tabler icons-tabler-outline icon-tabler-trash-x">
-                        <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                        <path d="M4 7h16" />
-                        <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" />
-                        <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" />
-                        <path d="M10 12l4 4m0 -4l-4 4" />
-                        </svg>
-                        </button>
-                        </TableCell>
-                    </TableRow>
-                    ))
-                ) : (
-                <TableRow>
-                    <TableCell colSpan={8} className="text-center h-24 text-muted-foreground">
-                        No se encontraron presupuestos registrados.
-                    </TableCell>
-                </TableRow>
+                            <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center text-xs text-emerald-600 font-semibold">
+                                <span>Ver desglose completo</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                            </div>
+                        </motion.div>
+                    ))}
+                </div>
             )}
-                    </TableBody>
-                </Table>
-            </div>
-        </div> 
-        {/* ================= PANTALLA EMERGENTE (MODAL) ================= */}
-            <Dialog open={modalAbierto} onOpenChange={setModalAbierto}>
-                <DialogContent className="w-[70vw] !max-w-[90vw] max-h-[85vh] overflow-y-auto bg-white dark:bg-slate-900">
-                    {presupuestoSeleccionado && (
-                        
-                        <>
-                            <motion.div
-                            initial={{ opacity: 0, y: -10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.5 }}
-                            >
-                            <DialogHeader>
-                                <DialogTitle className="text-2xl font-bold">
-                                    Desglose: {presupuestoSeleccionado.departamento?.Nombre}
-                                </DialogTitle>
-                                <DialogDescription className="text-base">
-                                    Periodo: {presupuestoSeleccionado.periodo?.Nombre} ({presupuestoSeleccionado.periodo?.Tipo})
-                                    <br />
-                                    Vigencia: del {presupuestoSeleccionado.periodo?.Fecha_I} al {presupuestoSeleccionado.periodo?.Fecha_F}
-                                </DialogDescription>
-                            </DialogHeader>
 
-                            {/* Resumen numérico rápido */}
-                            <div className="grid grid-cols-3 gap-4 my-4">
-                                <div className="p-4 bg-slate-50 dark:bg-slate-950 rounded-lg border">
-                                    <p className="text-xs font-medium text-muted-foreground uppercase">Aprobado</p>
-                                    <p className="text-xl font-bold">{formatearMoneda(presupuestoSeleccionado.Monto_Aprobado)}</p>
-                                </div>
-                                <div className="p-4 bg-slate-50 dark:bg-slate-950 rounded-lg border">
-                                    <p className="text-xs font-medium text-muted-foreground uppercase">Ejercido</p>
-                                    <p className="text-xl font-bold text-amber-600">{formatearMoneda(presupuestoSeleccionado.Monto_Ejercido)}</p>
-                                </div>
-                                <div className="p-4 bg-slate-50 dark:bg-slate-950 rounded-lg border">
-                                    <p className="text-xs font-medium text-muted-foreground uppercase">Disponible</p>
-                                    <p className="text-xl font-bold text-green-600">
-                                        {formatearMoneda(Number(presupuestoSeleccionado.Monto_Aprobado) - Number(presupuestoSeleccionado.Monto_Ejercido))}
+            {/* ================= MODAL CREAR (ANCHO FORZADO A 850px) ================= */}
+            <Dialog open={modalCrearOpen} onOpenChange={setModalCrearOpen}>
+                <DialogContent className="!max-w-[850px] !w-[95vw] p-0 overflow-hidden bg-white dark:bg-slate-900 rounded-2xl border-none shadow-2xl">
+                    <div className="bg-slate-900 text-white p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-xl font-bold">Crear Nuevo Presupuesto</h2>
+                            <span className="text-xs bg-slate-800 text-slate-300 px-3 py-1 rounded-full border border-slate-700">
+                                Paso {paso} de 2
+                            </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 text-xs font-semibold">
+                            <div className={`p-3 rounded-lg border flex items-center gap-2 ${paso === 1 ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400' : 'border-slate-800 text-slate-500'}`}>
+                                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${paso === 1 ? 'bg-emerald-500 text-slate-950 font-bold' : 'bg-slate-800 text-slate-400'}`}>1</span>
+                                Seleccionar Periodo
+                            </div>
+                            <div className={`p-3 rounded-lg border flex items-center gap-2 ${paso === 2 ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400' : 'border-slate-800 text-slate-500'}`}>
+                                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${paso === 2 ? 'bg-emerald-500 text-slate-950 font-bold' : 'bg-slate-800 text-slate-400'}`}>2</span>
+                                Cargar Partidas ({detalles.length})
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="p-6 md:p-8">
+                        <AnimatePresence mode="wait">
+                            {paso === 1 && (
+                                <motion.div 
+                                    key="paso1"
+                                    initial={{ opacity: 0, x: -10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: 10 }}
+                                    className="space-y-4 py-2"
+                                >
+                                    <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 block">
+                                        Selecciona el Periodo Fiscal:
+                                    </label>
+
+                                    {periodos.length > 0 ? (
+                                        <div className="space-y-4">
+                                            {/* Selector Desplegable */}
+                                            <select
+                                                className="w-full h-11 px-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm font-medium focus:ring-2 focus:ring-emerald-500"
+                                                value={idPeriodo ?? ''}
+                                                onChange={(e) => setIdPeriodo(Number(e.target.value))}
+                                            >
+                                                <option value="" disabled>-- Elige un periodo fiscal --</option>
+                                                {periodos.map((p) => {
+                                                    const idP = obtenerIdPeriodo(p);
+                                                    return (
+                                                        <option key={idP} value={idP}>
+                                                            {getNombrePeriodo(p)} (ID: {idP})
+                                                        </option>
+                                                    );
+                                                })}
+                                            </select>
+
+                                            {/* Opciones en Tarjetas */}
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[260px] overflow-y-auto pr-1">
+                                                {periodos.map((p) => {
+                                                    const idP = obtenerIdPeriodo(p);
+                                                    // Comparación estricta por número
+                                                    const esSeleccionado = idPeriodo !== null && Number(idPeriodo) === Number(idP);
+                                                    return (
+                                                        <div
+                                                            key={idP}
+                                                            onClick={() => setIdPeriodo(Number(idP))}
+                                                            className={`p-4 rounded-xl border cursor-pointer transition-all flex justify-between items-center ${
+                                                                esSeleccionado 
+                                                                    ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20 shadow-sm ring-1 ring-emerald-500' 
+                                                                    : 'border-slate-200 dark:border-slate-800 hover:border-slate-300'
+                                                            }`}
+                                                        >
+                                                            <div>
+                                                                <p className="font-bold text-sm text-slate-800 dark:text-white">
+                                                                    {getNombrePeriodo(p)}
+                                                                </p>
+                                                                <p className="text-xs text-slate-400 mt-0.5">
+                                                                    ID del Periodo: <span className="font-mono">{idP}</span>
+                                                                </p>
+                                                            </div>
+                                                            <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${esSeleccionado ? 'border-emerald-500 bg-emerald-500' : 'border-slate-300'}`}>
+                                                                {esSeleccionado && <div className="w-2 h-2 rounded-full bg-white" />}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-8 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-500 text-xs">
+                                            No se encontraron periodos fiscales disponibles.
+                                        </div>
+                                    )}
+
+                                    <div className="flex justify-end pt-6 border-t border-slate-100 dark:border-slate-800">
+                                        <Button 
+                                            disabled={!idPeriodo}
+                                            onClick={() => setPaso(2)}
+                                            className="bg-slate-900 text-white hover:bg-slate-800 px-8"
+                                        >
+                                            Siguiente: Agregar Partidas →
+                                        </Button>
+                                    </div>
+                                </motion.div>
+                            )}
+
+                            {paso === 2 && (
+                                <motion.div 
+                                    key="paso2"
+                                    initial={{ opacity: 0, x: 10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: -10 }}
+                                    className="space-y-6"
+                                >
+                                    <div className="p-4 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3">
+                                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                            Nueva Partida Presupuestaria
+                                        </p>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+                                            <div className="md:col-span-4">
+                                                <select
+                                                    className="w-full h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs focus:ring-2 focus:ring-emerald-500"
+                                                    value={partidaTemporal.id_categoria}
+                                                    onChange={(e) => setPartidaTemporal({ ...partidaTemporal, id_categoria: e.target.value })}
+                                                >
+                                                    <option value="">Selecciona Categoría...</option>
+                                                    {categorias.map((c) => {
+                                                        const idCat = obtenerIdCategoria(c);
+                                                        return (
+                                                            <option key={idCat} value={idCat}>
+                                                                {c.Nombre || c.nombre || `Categoría #${idCat}`}
+                                                            </option>
+                                                        );
+                                                    })}
+                                                </select>
+                                            </div>
+
+                                            <div className="md:col-span-3">
+                                                <Input
+                                                    type="number"
+                                                    step="0.01"
+                                                    placeholder="Monto ($)"
+                                                    className="h-10 text-xs"
+                                                    value={partidaTemporal.monto_asignado}
+                                                    onChange={(e) => setPartidaTemporal({ ...partidaTemporal, monto_asignado: e.target.value })}
+                                                />
+                                            </div>
+
+                                            <div className="md:col-span-5">
+                                                <Input
+                                                    placeholder="Descripción detallada..."
+                                                    className="h-10 text-xs"
+                                                    value={partidaTemporal.descripcion}
+                                                    onChange={(e) => setPartidaTemporal({ ...partidaTemporal, descripcion: e.target.value })}
+                                                />
+                                            </div>
+
+                                            <div className="md:col-span-12 flex justify-end">
+                                                <Button 
+                                                    type="button" 
+                                                    onClick={handleAgregarPartida}
+                                                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-6 h-9"
+                                                >
+                                                    + Añadir Item a la Lista
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="max-h-[260px] overflow-y-auto overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+                                        <Table className="w-full min-w-[650px]">
+                                            <TableHeader className="bg-slate-50 dark:bg-slate-950 sticky top-0">
+                                                <TableRow>
+                                                    <TableHead className="text-xs">Categoría</TableHead>
+                                                    <TableHead className="text-xs">Descripción</TableHead>
+                                                    <TableHead className="text-xs text-right">Monto Asignado</TableHead>
+                                                    <TableHead className="w-[50px]"></TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {detalles.length > 0 ? (
+                                                    detalles.map((d, index) => (
+                                                        <TableRow key={index}>
+                                                            <TableCell className="text-xs font-bold">{getNombreCategoria(d.id_categoria)}</TableCell>
+                                                            <TableCell className="text-xs">{d.descripcion}</TableCell>
+                                                            <TableCell className="text-xs text-right font-semibold">{formatearMoneda(d.monto_asignado)}</TableCell>
+                                                            <TableCell className="text-center">
+                                                                <button 
+                                                                    onClick={() => handleEliminarPartida(index)}
+                                                                    className="text-red-500 hover:text-red-700 p-1 font-bold"
+                                                                    title="Eliminar partida"
+                                                                >
+                                                                    ✕
+                                                                </button>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))
+                                                ) : (
+                                                    <TableRow>
+                                                        <TableCell colSpan={4} className="text-center py-8 text-xs text-slate-400">
+                                                            Aún no has agregado partidas. Usa el panel superior para cargar ítems.
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+
+                                    <div className="flex justify-between items-center pt-4 border-t">
+                                        <div>
+                                            <p className="text-xs text-slate-400 uppercase font-bold">Total Asignado</p>
+                                            <p className="text-2xl font-black text-slate-900 dark:text-white">{formatearMoneda(totalCalculado)}</p>
+                                        </div>
+
+                                        <div className="flex gap-3">
+                                            <Button variant="outline" onClick={() => setPaso(1)}>
+                                                ← Volver a Periodo
+                                            </Button>
+                                            <Button 
+                                                disabled={detalles.length === 0}
+                                                onClick={handleGuardarPresupuesto}
+                                                className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-6"
+                                            >
+                                                Guardar Presupuesto
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* ================= MODAL VISTA DETALLADA (ANCHO FORZADO A 750px) ================= */}
+            <Dialog open={modalVerOpen} onOpenChange={setModalVerOpen}>
+                <DialogContent className="!max-w-[750px] !w-[90vw] bg-white dark:bg-slate-900 rounded-2xl p-6 md:p-8">
+                    {presupuestoSeleccionado && (
+                        <div>
+                            <div className="border-b pb-4 mb-6">
+                                <span className="text-xs font-bold uppercase tracking-wider text-emerald-600">
+                                    Periodo #{presupuestoSeleccionado.id_periodo || presupuestoSeleccionado.Id_Periodo}
+                                </span>
+                                <h2 className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                                    Desglose de Presupuesto
+                                </h2>
+                            </div>
+
+                            <div className="space-y-3 max-h-[380px] overflow-y-auto pr-2">
+                                {(presupuestoSeleccionado.detalles || []).map((det, i) => (
+                                    <div key={i} className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800 flex justify-between items-center gap-4">
+                                        <div>
+                                            <span className="text-[10px] font-bold uppercase px-2.5 py-1 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                                                {getNombreCategoria(det.id_categoria || det.Id_Categoria)}
+                                            </span>
+                                            <p className="text-xs font-medium text-slate-800 dark:text-slate-200 mt-2">
+                                                {det.descripcion || det.Descripcion}
+                                            </p>
+                                        </div>
+                                        <p className="font-bold text-base text-slate-900 dark:text-white whitespace-nowrap">
+                                            {formatearMoneda(det.monto_asignado || det.Monto_Asignado)}
+                                        </p>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="mt-6 pt-4 border-t flex justify-between items-center">
+                                <div>
+                                    <p className="text-xs text-slate-400 font-bold uppercase">Total del Presupuesto</p>
+                                    <p className="text-xl font-black text-slate-900 dark:text-white">
+                                        {formatearMoneda(
+                                            presupuestoSeleccionado.detalles?.reduce((a, b) => a + Number(b.monto_asignado || b.Monto_Asignado || 0), 0)
+                                        )}
                                     </p>
                                 </div>
+                                <Button variant="outline" onClick={() => setModalVerOpen(false)}>
+                                    Cerrar
+                                </Button>
                             </div>
-
-                            {/* Sub-tabla con las partidas detalladas */}
-                            <div className=" rounded-md border mt-4">
-                                <Table>
-                                    <TableHeader className="bg-muted/50">
-                                        <TableRow>
-                                            <TableHead className="w-[150px]">Categoría</TableHead>
-                                            <TableHead>Descripción</TableHead>
-                                            <TableHead className="text-right w-[150px]">Monto Asignado</TableHead>
-                                            <TableHead className="text-right w-[150px]">Monto Ejercido</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {presupuestoSeleccionado.detalles && presupuestoSeleccionado.detalles.length > 0 ? (
-                                            presupuestoSeleccionado.detalles.map((detalle, idx) => (
-                                                <TableRow key={idx}>
-                                                    <TableCell className="font-semibold">
-                                                        {detalle.Categoria_Nombre || `ID Categoría: ${detalle.Id_Categoria}`}
-                                                    </TableCell>
-                                                    <TableCell className="text-sm">{detalle.Descripcion}</TableCell>
-                                                    <TableCell className="text-right">{formatearMoneda(detalle.Monto_Asignado)}</TableCell>
-                                                    <TableCell className="text-right text-muted-foreground">{formatearMoneda(detalle.Monto_Ejercido)}</TableCell>
-                                                </TableRow>
-                                            ))
-                                        ) : (
-                                            <TableRow>
-                                                <TableCell colSpan={4} className="text-center h-16 text-muted-foreground">
-                                                    Este presupuesto no cuenta con partidas desglosadas.
-                                                </TableCell>
-                                            </TableRow>
-                                        )}
-                                    </TableBody>
-                                </Table>
-                            </div>
-                            </motion.div>  
-                        </>
+                        </div>
                     )}
                 </DialogContent>
             </Dialog>
-            {/* MODAL PARA CREAR Y EDITAR */}
-<Dialog open={modalFormAbierto} onOpenChange={setModalFormAbierto}>
-    <DialogContent className="sm:max-w-[500px] bg-white dark:bg-slate-900">
-        <DialogHeader>
-            <DialogTitle>
-                {modoModal === 'crear' ? 'Agregar Presupuesto' : 'Editar Presupuesto'}
-            </DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleGuardar} className="space-y-4 pt-4">
-            <div>
-                <label className="text-sm font-medium">ID Departamento</label>
-                <Input 
-                    type="number" 
-                    value={formData.Id_Departamento}
-                    onChange={(e) => setFormData({...formData, Id_Departamento: e.target.value})}
-                    required
-                />
-            </div>
-            <div>
-                <label className="text-sm font-medium">ID Periodo</label>
-                <Input 
-                    type="number" 
-                    value={formData.Id_Periodo}
-                    onChange={(e) => setFormData({...formData, Id_Periodo: e.target.value})}
-                    required
-                />
-            </div>
-            <div>
-                <label className="text-sm font-medium">Monto Aprobado</label>
-                <Input 
-                    type="number" 
-                    step="0.01"
-                    value={formData.Monto_Aprobado}
-                    onChange={(e) => setFormData({...formData, Monto_Aprobado: e.target.value})}
-                    required
-                />
-            </div>
-            <div className="flex justify-end gap-2 pt-4">
-                <Button type="button" variant="outline" onClick={() => setModalFormAbierto(false)}>
-                    Cancelar
-                </Button>
-                <Button type="submit">
-                    {modoModal === 'crear' ? 'Guardar' : 'Actualizar'}
-                </Button>
-            </div>
-        </form>
-    </DialogContent>
-</Dialog>
-
-{/* MODAL DE CONFIRMACIÓN PARA ELIMINAR */}
-<Dialog open={modalEliminarAbierto} onOpenChange={setModalEliminarAbierto}>
-    <DialogContent className="sm:max-w-[400px] bg-white dark:bg-slate-900">
-        <DialogHeader>
-            <DialogTitle>¿Confirmar eliminación?</DialogTitle>
-            <DialogDescription>
-                Esta acción no se puede deshacer. Se eliminará el presupuesto permanentemente.
-            </DialogDescription>
-        </DialogHeader>
-        <div className="flex justify-end gap-2 pt-4">
-            <Button variant="outline" onClick={() => setModalEliminarAbierto(false)}>
-                Cancelar
-            </Button>
-            <Button variant="destructive" onClick={handleEliminar}>
-                Eliminar
-            </Button>
         </div>
-    </DialogContent>
-</Dialog>
-               
-    </>
-);
+    );
 }
-export default presupuestosTable;
+
+export default PresupuestosManager;
