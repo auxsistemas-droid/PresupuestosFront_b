@@ -13,7 +13,9 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import './../styles/Dashboard.css';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useParams } from "react-router-dom";
+import api from "../api/axios";
 
 // Componente individual arrastrable
 function SortableCard({ id, className, children }) {
@@ -41,20 +43,48 @@ function SortableCard({ id, className, children }) {
 }
 
 export default function Dashboard() {
+  const { idPresupuesto } = useParams();
+
+  const [resumen, setResumen] = useState(null);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState(null);
+
   const [cards, setCards] = useState([
-    { id: "card-1", label: "Card 1",    className: "card span-3 card-sm" },
-    { id: "card-2", label: "Card 2",    className: "card span-3 card-sm" },
-    { id: "card-3", label: "Card 3",    className: "card span-3 card-sm" },
-    { id: "card-4", label: "Card 4",    className: "card span-3 card-sm" },
-    { id: "grafico",     label: "Gráfico",   className: "card span-8 card-lg" },
-    { id: "dona",        label: "Dona",      className: "card span-8 card-lg" },
-    { id: "movimientos", label: "Movimientos", className: "card span-8 card-lg" },
-    { id: "barras",  label: "Barras",  className: "card span-4 card-md" },
-    { id: "alertas", label: "Alertas", className: "card span-4 card-md" },
-    { id: "atajos",  label: "Atajos",  className: "card span-4 card-md" },
+    { id: "presupuesto-total", label: "Presupuesto Aprobado", className: "card span-3 card-sm" },
+    { id: "total-gastado",     label: "Total Gastado",     className: "card span-3 card-sm" },
+    { id: "saldo-disponible",  label: "Saldo Disponible",  className: "card span-3 card-sm" },
+    { id: "ingresos-mes",      label: "Ingresos del Mes",  className: "card span-3 card-sm" },
+
+    { id: "ejecucion-grafico", label: "Gasto Real vs. Planificado", className: "card span-8 card-lg" },
+    { id: "gastos-categoria",  label: "Gastos por Categoría",      className: "card span-8 card-lg" },
+    { id: "ultimos-movimientos", label: "Últimas Transacciones",    className: "card span-8 card-lg" },
+
+    { id: "historico-barras",  label: "Histórico Mensual",   className: "card span-4 card-md" },
+    { id: "alertas-limite",    label: "Alertas y Fechas",    className: "card span-4 card-md" },
+    { id: "acciones-rapidas",  label: "Acciones Rápidas",    className: "card span-4 card-md" },
   ]);
 
   const sensors = useSensors(useSensor(PointerSensor));
+
+  useEffect(() => {
+  setCargando(true);
+  setError(null);
+
+  api.get('/dashboard/summary')
+    .then((res) => {
+      setResumen(res.data);
+    })
+    .catch((err) => {
+      if (err.response && err.response.status === 401) {
+        setError("Sesión expirada. Por favor, inicia sesión nuevamente.");
+      } else {
+        setError("Error al cargar el resumen del presupuesto.");
+      }
+    })
+    .finally(() => {
+      setCargando(false);
+    });
+}, []);
 
   function handleDragEnd(event) {
     const { active, over } = event;
@@ -66,6 +96,25 @@ export default function Dashboard() {
       });
     }
   }
+
+  function renderValor(id) {
+    if (!resumen) return "Sin datos";
+
+    switch (id) {
+      case "presupuesto-total":
+        return `$${resumen.presupuestoTotal.toLocaleString()}`;
+      case "total-gastado":
+        return `$${resumen.totalGastado.toLocaleString()}`;
+      case "saldo-disponible":
+        return `$${resumen.saldoDisponible.toLocaleString()}`;
+      default:
+        return null; // cards sin data todavía (gráficos, ingresos-mes, etc.)
+    }
+  }
+
+  const idsConData = ["presupuesto-total", "total-gastado", "saldo-disponible"];
+
+  if (error) return <p className="p-6 text-center text-red-500">Error: {error}</p>;
 
   return (
     <main className="main-content">
@@ -81,10 +130,15 @@ export default function Dashboard() {
             strategy={rectSortingStrategy}
           >
             {cards.map((card) => (
-              <SortableCard key={card.id} id={card.id} className={card.className}>
-                {card.label}
-              </SortableCard>
-            ))}
+            <SortableCard key={card.id} id={card.id} className={card.className}>
+            <p className="text-sm font-medium text-muted-foreground">{card.label}</p>
+            {idsConData.includes(card.id) && (
+            <p className="text-2xl font-bold mt-1">
+            {cargando ? "…" : renderValor(card.id)}
+            </p>
+          )}
+          </SortableCard>
+        ))}
           </SortableContext>
         </DndContext>
       </div>

@@ -268,7 +268,6 @@ export default function DepartamentoTabla() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 flex items-center gap-2">
-            <Building2 className="h-6 w-6 text-primary" />
             Gestión de Departamentos
           </h1>
           <p className="text-sm text-muted-foreground">

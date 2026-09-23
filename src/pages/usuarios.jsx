@@ -383,7 +383,6 @@ const handleGuardarEdicion = async (e) => {
         <Table>
           <TableHeader className="bg-slate-50 dark:bg-slate-900/50">
             <TableRow>
-              <TableHead className="w-[80px]">ID</TableHead>
               <TableHead>Usuario</TableHead>
               <TableHead>Roles</TableHead>
               <TableHead>Estado</TableHead>
@@ -400,7 +399,6 @@ const handleGuardarEdicion = async (e) => {
                     onClick={() => abrirPanelDetalle(usuario)}
                     className="cursor-pointer hover:bg-indigo-50/40 dark:hover:bg-indigo-950/20 transition-colors group"
                   >
-                    <TableCell className="font-mono text-xs text-muted-foreground">#{usuario.Id_usuario}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <div className="h-9 w-9 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 font-semibold text-xs flex items-center justify-center shrink-0 border border-indigo-200/50">
@@ -527,7 +525,7 @@ const handleGuardarEdicion = async (e) => {
       {/* PANEL: DETALLE / EDICIÓN */}
       {panelDetalleUsuario && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex justify-end">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-md h-full shadow-2xl p-6 flex flex-col overflow-y-auto animate-in slide-in-from-right duration-200">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-md h-full shadow-2xl p-4 flex flex-col overflow-y-auto animate-in slide-in-from-right duration-200">
             <div className="space-y-6 flex-1">
               <div className="flex items-center justify-between border-b pb-4">
                 <div className="flex items-center gap-2">
