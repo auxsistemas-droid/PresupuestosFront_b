@@ -11,6 +11,7 @@ import './index.css';
 import MainLayout from "./layout/MainLayout";
 import Periodos from "./pages/periodos";
 import Categorias from "./pages/categorias";
+import Revision from "./pages/revision";
 
 function App() {
   return (
@@ -33,6 +34,7 @@ function App() {
             <Route path="/cpresupuesto" element={<CPresupuestos/>}/>
             <Route path="/periodos" element={<Periodos/>}/>
             <Route path="/categorias" element={<Categorias/>}/>
+            <Route path="/revision" element={<Revision/>}/>
           </Route>
 
         </Routes>

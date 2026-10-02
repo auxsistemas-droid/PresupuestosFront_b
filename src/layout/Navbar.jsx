@@ -20,7 +20,7 @@ function Navbar({ active, toggleMenu }) {
                     <li><Link to="/cpresupuesto">Captura Presupuestos</Link></li>
                     <li><Link to="/categorias">Categorías</Link></li>
                     <li><Link to="/periodos">Periodos</Link></li>
-                    <li><Link to="/autorizados">Autorizados</Link></li>
+                    <li><Link to="/revision">Revision</Link></li>
                     <li><Link to="/comprobantes">Comprobantes</Link></li>
                     <li><Link to="/configuracion">Configuracion</Link></li>
                 </ul>

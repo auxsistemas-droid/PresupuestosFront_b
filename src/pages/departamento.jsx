@@ -275,7 +275,7 @@ export default function DepartamentoTabla() {
           </p>
         </div>
 
-        <Button onClick={handleAbrirCrear} className="gap-2 shadow-sm">
+        <Button onClick={handleAbrirCrear} className="gap-2 shadow-sm bg-green-600 hover:bg-green-700 text-white">
           <Plus className="h-4 w-4" />
           Nuevo Departamento
         </Button>
