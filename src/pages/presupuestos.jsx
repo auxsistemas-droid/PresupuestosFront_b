@@ -34,6 +34,8 @@ function PresupuestosManager() {
         monto_asignado: '',
         descripcion: ''
     });
+    const [mostrarModalConfirmacion,setMostrarModalConfirmacion] = useState(false);
+    const [enviando, setEnviando] = useState(false);
 
     useEffect(() => {
         cargarDatosIniciales();
@@ -256,13 +258,14 @@ function PresupuestosManager() {
             });
         }
     };
+
 const handleToggleAprobar = async (presupuesto, debeAprobar) => {
     if (!presupuesto) return;
 
     // Obtenemos el ID del presupuesto dinámicamente
     const idPresupuesto = presupuesto.id_presupuesto || presupuesto.Id_Presupuesto || presupuesto.id || presupuesto.Id;
-    const nuevoEstado = debeAprobar ? "aprobado" : "borrador";
-
+    const nuevoEstado = debeAprobar ? "enviado" : "borrador";
+    setEnviando(true); //boton envio 
     try {
         // Petición PUT con Axios
         await api.put(`/presupuesto/${idPresupuesto}`, {
@@ -287,11 +290,18 @@ const handleToggleAprobar = async (presupuesto, debeAprobar) => {
                 })
             );
         }
+        setMostrarModalConfirmacion(false);
 
     } catch (error) {
         console.error("Error al actualizar el estado del presupuesto:", error);
+    }finally{
+    setEnviando(false);
     }
 };
+const estadoTexto =
+  presupuestoSeleccionado?.estado || presupuestoSeleccionado?.Estado || '';
+const estaEnviado = estadoTexto.toLowerCase() === 'enviado';
+
     return (
         <div className="p-8 max-w-7xl mx-auto min-h-screen bg-slate-50/50 dark:bg-slate-950">
             {/* Encabezado Principal */}
@@ -313,6 +323,7 @@ const handleToggleAprobar = async (presupuesto, debeAprobar) => {
                     Nuevo Presupuesto
                 </Button>
             </div>
+            
             
 
             {/* Listado Principal */}
@@ -346,6 +357,9 @@ const handleToggleAprobar = async (presupuesto, debeAprobar) => {
                                 <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100 mb-1">
                                     {item.periodo?.Nombre || item.periodo?.nombre || `Presupuesto Fiscal`}
                                 </h3>
+                                <span className="text-xs font-semibold px-2.5 py-1 rounded-full">
+                                    {item.Estado || item.estado || 'Sin estado'}
+                                </span>
                                 <p className="text-3xl font-black text-slate-900 dark:text-white mt-4">
                                     {formatearMoneda(
                                         item.detalles?.reduce((a, b) => a + Number(b.monto_asignado || b.Monto_Asignado || 0), 0) || item.Monto_Aprobado
@@ -601,11 +615,7 @@ const handleToggleAprobar = async (presupuesto, debeAprobar) => {
 {/* ================= MODAL VISTA DETALLADA ================= */}
 <Dialog open={modalVerOpen} onOpenChange={setModalVerOpen}>
     <DialogContent className="!max-w-[680px] !w-[90vw] max-h-[85vh] bg-white dark:bg-slate-900 rounded-2xl p-0 overflow-hidden flex flex-col border-none shadow-2xl">
-        {presupuestoSeleccionado && (() => {
-            // Evaluamos correctamente usando presupuestoSeleccionado
-            const estadoTexto = presupuestoSeleccionado?.Estado || presupuestoSeleccionado?.estado || '';
-            const estaAprobado = estadoTexto.toLowerCase() === "aprobado";
-
+        {presupuestoSeleccionado && (() => {           
             return (
                 <>
                     {/* Header y Cuerpo de la Tabla */}
@@ -618,11 +628,11 @@ const handleToggleAprobar = async (presupuesto, debeAprobar) => {
                                 
                                 {/* Badge de Estado */}
                                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
-                                    estaAprobado 
+                                    estaEnviado 
                                         ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800' 
                                         : 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800'
                                 }`}>
-                                    {estaAprobado ? '● Aprobado' : '○ Pendiente'}
+                                    {estaEnviado ? '● Enviado' : '○ Pendiente'}
                                 </span>
                             </div>
                             <h2 className="text-xl font-bold text-slate-900 dark:text-white mt-1.5 leading-tight">
@@ -687,41 +697,86 @@ const handleToggleAprobar = async (presupuesto, debeAprobar) => {
 
                     {/* Footer con Botón Dinámico de Aprobación */}
                     <div className="p-4 bg-slate-50 dark:bg-slate-950 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0">
-                        <Button 
-                            onClick={() => handleToggleAprobar(presupuestoSeleccionado, !estaAprobado)}
-                            className={`font-semibold text-xs px-5 h-9 rounded-lg flex items-center gap-2 shadow-sm transition-all active:scale-95 text-white ${
-                                estaAprobado 
-                                    ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-500/20' 
-                                    : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20'
-                            }`}
-                        >
-                            {estaAprobado ? (
-                                <>
-                                    <span>✕</span> Desaprobar Presupuesto
-                                </>
-                            ) : (
-                                <>
-                                    <span>✓</span> Aprobar Presupuesto
-                                </>
-                            )}
-                        </Button>
+                    <Button 
+                        type="button"
+                        disabled={enviando||estaEnviado}
+                        onClick={() => setMostrarModalConfirmacion(true)}
+                        className={`font-semibold text-xs px-5 h-9 rounded-lg flex items-center gap-2 shadow-sm transition-all active:scale-95 text-white disabled:opacity-50 disabled:cursor-not-allowed ${
+                        estaEnviado 
+                            ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-500/20' 
+                            : 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/20'
+                        }`}
+                    >
+                    {enviando ? (
+                    <span>Enviando...</span>
+                    ) : estaEnviado ? (
+                    <>
+                    <span>✕</span> Enviado
+                    </>
+                    ) : (
+                    <>
+                    <span>✓</span> Enviar presupuesto
+                    </>
+                )}
+            </Button>
 
-                        <Button 
-                            variant="outline" 
-                            onClick={() => setModalVerOpen(false)}
-                            className="h-9 text-xs px-4 border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-900"
-                        >
-                            Cerrar
-                        </Button>
-                    </div>
-                </>
-            );
-        })()}
-    </DialogContent>
-</Dialog>
-
+            <Button 
+                variant="outline" 
+                disabled={enviando}
+                onClick={() => setModalVerOpen(false)}
+                className="h-9 text-xs px-4 border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-900 disabled:opacity-50"
+            >
+            Cerrar
+            </Button>
         </div>
-    );
-}
+                    </>
+                );
+        })()}
+        </DialogContent>
+    </Dialog>
+        {mostrarModalConfirmacion && (
+        <div
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[60]"
+            onClick={() => !enviando && setMostrarModalConfirmacion(false)}
+        >
+        <div
+        className="bg-white dark:bg-slate-900 rounded-2xl max-w-sm w-full p-6 space-y-4 border border-slate-200 dark:border-slate-800 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+        >
+        <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+            {estaEnviado ? '¿Cancelar el envío?' : '¿Enviar presupuesto?'}
+        </h3>
+        <p className="text-sm text-slate-500">
+            {estaEnviado
+            ? 'El presupuesto volverá a borrador y podrás editarlo de nuevo.'
+            : 'Una vez enviado, pasará a revisión y ya no podrás editarlo.'}
+        </p>
+
+            <div className="flex justify-end gap-3 pt-2">
+                <button
+                type="button"
+                disabled={enviando}
+                onClick={() => setMostrarModalConfirmacion(false)}
+                className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl disabled:opacity-50"
+            >
+            Cancelar
+            </button>
+            <button
+                type="button"
+                disabled={enviando}
+                onClick={() => handleToggleAprobar(presupuestoSeleccionado, !estaEnviado)}
+                className={`px-4 py-2 text-sm font-semibold text-white rounded-xl disabled:opacity-50 ${
+                estaEnviado ? 'bg-rose-600 hover:bg-rose-700' : 'bg-blue-600 hover:bg-blue-700'
+            }`}
+            >
+            {enviando ? 'Enviando...' : 'Confirmar'}
+            </button>
+        </div>
+        </div>
+    </div>
+    )}
+            </div>
+        ); 
+    }
 
 export default PresupuestosManager;

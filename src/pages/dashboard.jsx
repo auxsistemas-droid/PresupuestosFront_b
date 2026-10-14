@@ -43,7 +43,7 @@ function SortableCard({ id, className, children }) {
 }
 
 export default function Dashboard() {
-  
+
   const [resumen, setResumen] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);

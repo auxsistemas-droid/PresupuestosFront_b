@@ -12,6 +12,7 @@ import MainLayout from "./layout/MainLayout";
 import Periodos from "./pages/periodos";
 import Categorias from "./pages/categorias";
 import Revision from "./pages/revision";
+import NoAutorizado from "./pages/no-autorizado";
 
 function App() {
   return (
@@ -28,13 +29,14 @@ function App() {
               </ProtectedRoute>
             }
           >
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/departamento" element={<Departamento />} />
-            <Route path="/usuarios" element={<Usuarios/>}/>
-            <Route path="/cpresupuesto" element={<CPresupuestos/>}/>
-            <Route path="/periodos" element={<Periodos/>}/>
-            <Route path="/categorias" element={<Categorias/>}/>
-            <Route path="/revision" element={<Revision/>}/>
+            <Route path="/dashboard" element={<ProtectedRoute allowedRoles={["Administrador"]}><Dashboard /></ProtectedRoute>} />
+            <Route path="/departamento" element={<ProtectedRoute allowedRoles={["Administrador"]}><Departamento /></ProtectedRoute>} />
+            <Route path="/usuarios" element={<ProtectedRoute allowedRoles={["Administrador"]}><Usuarios /></ProtectedRoute>} />
+            <Route path="/cpresupuesto" element={<ProtectedRoute allowedRoles={["Administrador","Usuario"]}><CPresupuestos /></ProtectedRoute>} />
+            <Route path="/periodos" element={<ProtectedRoute allowedRoles={["Administrador"]}><Periodos /></ProtectedRoute>} />
+            <Route path="/categorias" element={<ProtectedRoute allowedRoles={["Administrador"]}><Categorias /></ProtectedRoute>} />
+            <Route path="/revision" element={<ProtectedRoute allowedRoles={["Administrador"]}><Revision /></ProtectedRoute>} />
+            <Route path="/not-authorized" element={<NoAutorizado />} />
           </Route>
 
         </Routes>

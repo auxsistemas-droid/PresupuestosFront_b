@@ -1,4 +1,4 @@
-import { Children, createContext, useContext, useEffect,useState } from "react";
+import { createContext, useContext, useEffect,useState } from "react";
 import api from "../api/axios";
 
 const AuthContext = createContext();
@@ -31,12 +31,19 @@ export const AuthProvider = ({children}) => {
     const logout = async () => {
         try {
             await api.post("/auth/logout");
-            setUser(null);
-        } catch (error){console.error("Logout failed", error);}
+        } 
+        catch (error){console.error("Logout failed", error);}
+        finally {setUser(null);}
     };
-    //proveer el contexto a los componentes hijos
+
+   const hasRole = (...roles) => {
+     const userRoles = Array.isArray(user?.Rol) ? user.Rol : user?.Rol ? [user.Rol] : [];
+     return roles.some((r) => userRoles.includes(r));
+   };
+
+console.log("user:", user, "| isAdmin:", hasRole("Administrador"));    //proveer el contexto a los componentes hijos
     return (
-    <AuthContext.Provider value={{ user, setUser, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, setUser, login, logout, loading, hasRole }}>
       {children}
     </AuthContext.Provider>
 );
