@@ -13,6 +13,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import Swal from "sweetalert2";
 import api from "../api/axios.js";
+import { XCircle, CheckCircle } from "lucide-react";
 
 function PresupuestosManager() {
   const [presupuestos, setPresupuestos] = useState([]);
@@ -409,10 +410,57 @@ function PresupuestosManager() {
     "en_revision",
     "aprobado",
     "aprobada",
+    "rechazado",
   ];
   const estaEnviado = estadosEnviados.includes(estadoTexto?.toLowerCase());
   const esBorrador = estadoTexto.toLowerCase() === "borrador";
+  const estaRechazado = estadoTexto.toLowerCase() === "rechazado";
 
+  const verde = {
+    color: "text-green-600 dark:text-green-400",
+    Icono: CheckCircle,
+  };
+  const rojo = { color: "text-red-600 dark:text-red-400", Icono: XCircle };
+  const neutro = { color: "text-slate-900 dark:text-white", Icono: null };
+
+  const getEstilos = (estado, solicitado, aprobado) => {
+    switch (estado) {
+      case "enviado":
+        return { solicitado: verde, aprobado: neutro };
+      case "aprobado":
+        return solicitado === aprobado
+          ? { solicitado: verde, aprobado: verde }
+          : { solicitado: rojo, aprobado: verde };
+      case "rechazado":
+        return { solicitado: rojo, aprobado: rojo };
+      default:
+        return { solicitado: neutro, aprobado: neutro };
+    }
+  };
+
+  const Monto = ({ valor, estilo, className = "text-xl mt-2" }) => {
+    const { Icono, color } = estilo;
+    return (
+      <p className={`flex items-center gap-2 font-black ${className} ${color}`}>
+        {Icono && <Icono className="w-5 h-5" />}
+        {formatearMoneda(valor)}
+      </p>
+    );
+  };
+  const Diferencia = ({ solicitado, aprobado, className = "text-sm mt-2" }) => {
+    const diferencia = solicitado - aprobado;
+    const estilo = diferencia > 0 ? rojo : diferencia < 0 ? verde : neutro;
+    const { Icono, color } = estilo;
+
+    return (
+      <p
+        className={`flex items-center gap-2 font-semibold ${className} ${color}`}
+      >
+        {Icono && <Icono className="w-4 h-4" />}
+        Diferencia: -{formatearMoneda(Math.abs(diferencia))}
+      </p>
+    );
+  };
   return (
     <div className="p-8 max-w-7xl mx-auto min-h-screen bg-slate-50/50 dark:bg-slate-950">
       {/* Encabezado Principal */}
@@ -465,61 +513,75 @@ function PresupuestosManager() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {presupuestos.map((item, idx) => (
-            <motion.div
-              key={idx}
-              whileHover={{ y: -4 }}
-              className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between"
-              onClick={() => {
-                setPresupuestoSeleccionado(item);
-                setModalVerOpen(true);
-              }}
-            >
-              <div>
-                <div className="flex justify-between items-start mb-4">
-                  <span className="text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                    Periodo #
-                    {item.id_periodo || item.Id_Periodo || item.Id_Periodos}
-                  </span>
-                  <span className="text-xs text-slate-400">
-                    {item.detalles?.length || 0} partidas
-                  </span>
-                </div>
-                <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100 mb-1">
-                  {item.periodo?.Nombre ||
-                    item.periodo?.nombre ||
-                    `Presupuesto Fiscal`}
-                </h3>
-                <span className="text-xs font-semibold px-2.5 py-1 rounded-full">
-                  {item.Estado || item.estado || "Sin estado"}
-                </span>
-                <p className="text-3xl font-black text-slate-900 dark:text-white mt-4">
-                  {formatearMoneda(
-                    item.detalles?.reduce(
-                      (a, b) =>
-                        a + Number(b.monto_asignado || b.Monto_Asignado || 0),
-                      0,
-                    ) || item.Monto_Aprobado,
-                  )}
-                </p>
-              </div>
+          {presupuestos.map((item, idx) => {
+            const estado = (item.Estado || item.estado || "").toLowerCase();
 
-              <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center text-xs text-emerald-600 font-semibold">
-                <span>Ver desglose completo</span>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <path d="M5 12h14M12 5l7 7-7 7" />
-                </svg>
-              </div>
-            </motion.div>
-          ))}
+            const totalSolicitado =
+              item.detalles?.reduce(
+                (a, b) => a + Number(b.monto_asignado || b.Monto_Asignado || 0),
+                0,
+              ) || Number(item.Monto_Asignado || 0);
+
+            const totalAprobado =
+              item.detalles?.reduce(
+                (a, b) => a + Number(b.monto_aprobado || b.Monto_Aprobado || 0),
+                0,
+              ) || Number(item.Monto_Aprobado || 0);
+
+            const estilos = getEstilos(estado, totalSolicitado, totalAprobado);
+
+            return (
+              <motion.div
+                key={idx}
+                whileHover={{ y: -4 }}
+                className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between"
+                onClick={() => {
+                  setPresupuestoSeleccionado(item);
+                  setModalVerOpen(true);
+                }}
+              >
+                <div>
+                  <div className="flex justify-between items-start mb-4">
+                    <span className="text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                      Periodo #
+                      {item.id_periodo || item.Id_Periodo || item.Id_Periodos}
+                    </span>
+                    <span className="text-xs text-slate-400">
+                      {item.detalles?.length || 0} partidas
+                    </span>
+                  </div>
+
+                  <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100 mb-1">
+                    {item.periodo?.Nombre ||
+                      item.periodo?.nombre ||
+                      "Presupuesto Fiscal"}
+                  </h3>
+
+                  <span className="text-xs font-semibold px-2.5 py-1 rounded-full">
+                    {item.Estado || item.estado || "Sin estado"}
+                  </span>
+
+                  <Monto valor={totalSolicitado} estilo={estilos.solicitado} />
+                  <Monto valor={totalAprobado} estilo={estilos.aprobado} />
+                </div>
+
+                <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center text-xs text-emerald-600 font-semibold">
+                  <span>Ver desglose completo</span>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </motion.div>
+            );
+          })}
         </div>
       )}
       {/* ================= MODAL CREAR ================= */}
@@ -827,6 +889,32 @@ function PresupuestosManager() {
         <DialogContent className="!max-w-[680px] !w-[90vw] max-h-[85vh] bg-white dark:bg-slate-900 rounded-2xl p-0 overflow-hidden flex flex-col border-none shadow-2xl">
           {presupuestoSeleccionado &&
             (() => {
+              const estadoSel = (
+                presupuestoSeleccionado.Estado ||
+                presupuestoSeleccionado.estado ||
+                ""
+              ).toLowerCase();
+
+              const totalSolicitado =
+                presupuestoSeleccionado.detalles?.reduce(
+                  (a, b) =>
+                    a + Number(b.monto_asignado || b.Monto_Asignado || 0),
+                  0,
+                ) || Number(presupuestoSeleccionado.Monto_Asignado || 0);
+
+              const totalAprobado =
+                presupuestoSeleccionado.detalles?.reduce(
+                  (a, b) =>
+                    a + Number(b.monto_aprobado || b.Monto_Aprobado || 0),
+                  0,
+                ) || Number(presupuestoSeleccionado.Monto_Aprobado || 0);
+
+              const estilos = getEstilos(
+                estadoSel,
+                totalSolicitado,
+                totalAprobado,
+              );
+
               return (
                 <>
                   {/* Header y Cuerpo de la Tabla */}
@@ -861,16 +949,21 @@ function PresupuestosManager() {
                       <span className="text-[10px] text-slate-400 uppercase font-bold block">
                         Total Presupuestado
                       </span>
-                      <span className="text-xl font-black text-slate-900 dark:text-white leading-tight">
-                        {formatearMoneda(
-                          presupuestoSeleccionado.detalles?.reduce(
-                            (a, b) =>
-                              a +
-                              Number(b.monto_asignado || b.Monto_Asignado || 0),
-                            0,
-                          ) || presupuestoSeleccionado.Monto_Aprobado,
-                        )}
-                      </span>
+                      <Monto
+                        valor={totalSolicitado}
+                        estilo={estilos.solicitado}
+                        className="text-base mt-1 justify-end"
+                      />
+                      <Monto
+                        valor={totalAprobado}
+                        estilo={estilos.aprobado}
+                        className="text-base mt-1 justify-end"
+                      />
+                      <Diferencia
+                        solicitado={totalSolicitado}
+                        aprobado={totalAprobado}
+                        className="text-xs mt-1 justify-end"
+                      />
                     </div>
                   </div>
 
@@ -887,7 +980,10 @@ function PresupuestosManager() {
                               Descripción
                             </TableHead>
                             <TableHead className="text-[11px] h-8 py-1 text-right">
-                              Monto
+                              Monto solicitado
+                            </TableHead>
+                            <TableHead className="text-[11px] h-8 py-1 text-right">
+                              Monto aprobado
                             </TableHead>
                             <TableHead className="w-[35px] h-8 py-1"></TableHead>
                           </TableRow>
@@ -917,6 +1013,11 @@ function PresupuestosManager() {
                                   <TableCell className="py-1.5 text-right font-semibold">
                                     {formatearMoneda(
                                       d.monto_asignado || d.Monto_Asignado,
+                                    )}
+                                  </TableCell>
+                                  <TableCell className="py-1.5 text-right font-semibold">
+                                    {formatearMoneda(
+                                      d.monto_aprobado || d.Monto_Aprobado,
                                     )}
                                   </TableCell>
                                   <TableCell className="py-1.5 text-center">
@@ -967,7 +1068,7 @@ function PresupuestosManager() {
 
                       <Button
                         type="button"
-                        disabled={enviando || estaEnviado}
+                        disabled={enviando || estaEnviado || estaRechazado}
                         onClick={() => setMostrarModalConfirmacion(true)}
                         className={`font-semibold text-xs px-5 h-9 rounded-lg flex items-center gap-2 shadow-sm transition-all active:scale-95 text-white disabled:opacity-50 disabled:cursor-not-allowed ${
                           estaEnviado

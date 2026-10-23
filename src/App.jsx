@@ -7,41 +7,98 @@ import Dashboard from "./pages/dashboard";
 import Departamento from "./pages/departamento";
 import Usuarios from "./pages/usuarios";
 import CPresupuestos from "./pages/presupuestos";
-import './index.css';
+import "./index.css";
 import MainLayout from "./layout/MainLayout";
 import Periodos from "./pages/periodos";
 import Categorias from "./pages/categorias";
 import Revision from "./pages/revision";
 import NoAutorizado from "./pages/no-autorizado";
+import Licencias from "./pages/licencias";
 
 function App() {
   return (
     <HashRouter>
-    <AuthProvider>
+      <AuthProvider>
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/login" element={<Login />} />
           <Route path="/confirmar" element={<Confirmar />} />
-          <Route 
+          <Route
             element={
               <ProtectedRoute>
                 <MainLayout />
               </ProtectedRoute>
             }
           >
-            <Route path="/dashboard" element={<ProtectedRoute allowedRoles={["Administrador"]}><Dashboard /></ProtectedRoute>} />
-            <Route path="/departamento" element={<ProtectedRoute allowedRoles={["Administrador"]}><Departamento /></ProtectedRoute>} />
-            <Route path="/usuarios" element={<ProtectedRoute allowedRoles={["Administrador"]}><Usuarios /></ProtectedRoute>} />
-            <Route path="/cpresupuesto" element={<ProtectedRoute allowedRoles={["Administrador","Usuario"]}><CPresupuestos /></ProtectedRoute>} />
-            <Route path="/periodos" element={<ProtectedRoute allowedRoles={["Administrador"]}><Periodos /></ProtectedRoute>} />
-            <Route path="/categorias" element={<ProtectedRoute allowedRoles={["Administrador"]}><Categorias /></ProtectedRoute>} />
-            <Route path="/revision" element={<ProtectedRoute allowedRoles={["Administrador"]}><Revision /></ProtectedRoute>} />
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute allowedRoles={["Administrador"]}>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/departamento"
+              element={
+                <ProtectedRoute allowedRoles={["Administrador"]}>
+                  <Departamento />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/usuarios"
+              element={
+                <ProtectedRoute allowedRoles={["Administrador"]}>
+                  <Usuarios />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/cpresupuesto"
+              element={
+                <ProtectedRoute allowedRoles={["Administrador", "Usuario"]}>
+                  <CPresupuestos />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/periodos"
+              element={
+                <ProtectedRoute allowedRoles={["Administrador"]}>
+                  <Periodos />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/categorias"
+              element={
+                <ProtectedRoute allowedRoles={["Administrador"]}>
+                  <Categorias />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/revision"
+              element={
+                <ProtectedRoute allowedRoles={["Administrador"]}>
+                  <Revision />
+                </ProtectedRoute>
+              }
+            />
             <Route path="/not-authorized" element={<NoAutorizado />} />
+            <Route
+              path="/licencias"
+              element={
+                <ProtectedRoute allowedRoles={["Administrador"]}>
+                  <Licencias />
+                </ProtectedRoute>
+              }
+            />
           </Route>
-
         </Routes>
-        </AuthProvider>
-      </HashRouter>
+      </AuthProvider>
+    </HashRouter>
   );
 }
 
